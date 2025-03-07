@@ -230,7 +230,7 @@ def load_previous_data(
             return pd.DataFrame(default_data)
         
         # Визначаємо специфічні періоди порівняння залежно від поточної дати
-        if current_month >= 3 and current_month < 7:
+        if current_month >= 1 and current_month < 7:
             # Для дат з кінця січня до кінця червня використовуємо фіксований період у січні
             previous_start_date = f"{current_start_date_obj.year}-01-05"
             previous_end_date = f"{current_start_date_obj.year}-01-25"
@@ -243,7 +243,7 @@ def load_previous_data(
             # Розраховуємо дату початку попереднього періоду (відступаємо на вказану кількість днів)
             previous_start_date = (current_start_date_obj - timedelta(days=days_back)).strftime('%Y-%m-%d')
             # Розраховуємо дату кінця попереднього періоду (день перед поточною датою початку)
-            previous_end_date = (current_start_date_obj - timedelta(days=2)).strftime('%Y-%m-%d')
+            previous_end_date = (current_start_date_obj - timedelta(days=3)).strftime('%Y-%m-%d')
         
         print(f"Завантаження попередніх даних за період: {previous_start_date} - {previous_end_date}")
         
