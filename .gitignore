@@ -1,0 +1,27 @@
+# Віртуальне середовище
+venv/
+env/
+.env/
+.venv/
+
+# Кеш Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Файли логів
+logs/*
+!logs/.gitkeep
+
+# Файли IDE та редакторів
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Особисті конфігурації
+config.ini
+credentials.py
