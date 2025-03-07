@@ -107,7 +107,7 @@ def update_table_with_results(
                     total_errors += 1
             
             # Вивід статистики тільки періодично
-            if (df_index + 1) % 10 == 0 or df_index == len(result_dfs) - 1:
+            if (df_index + 1) % 10000 == 0 or df_index == len(result_dfs) - 1:
                 logger.info(f"Оброблено {df_index + 1}/{len(result_dfs)} термінів. Поточна статистика: {total_updates} оновлень, {total_errors} помилок")
             
             # Обмеження частоти запитів
