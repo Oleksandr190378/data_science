@@ -1,5 +1,6 @@
 import pandas as pd
 import argparse
+import os
 from sqlalchemy import create_engine
 from get_id_terms import get_unique_search_terms_for_period, get_date_range
 from get_data import load_previous_data
@@ -8,6 +9,7 @@ from columns import column_mapping, columns_to_import
 from adjust_conv_click import adjust_clicks_and_orders, process_orders_and_clicks
 from update_database import update_table_with_results
 from logger import get_logger
+from config import get_config
 
 # Отримуємо логер для main модуля
 logger = get_logger("main")
@@ -39,6 +41,11 @@ def parse_search_range(range_str):
         return None
 
 def main():
+    # Отримуємо конфігурацію для поточного середовища
+    current_config = get_config()
+    db_config = current_config['db']
+    app_config = current_config['app']
+    
     # Парсинг аргументів командного рядка
     parser = argparse.ArgumentParser(description='Аналіз даних Amazon')
     parser.add_argument('--period', type=str, default='week',
@@ -50,24 +57,31 @@ def main():
                         help='Рік для аналізу')
     parser.add_argument('--search_range', type=str, default=None,
                         help='Діапазон пошукових термінів у форматі "start:end" (наприклад, "10:20")')
-    parser.add_argument('--days_back', type=int, default=7,
+    parser.add_argument('--days_back', type=int, default=app_config['days_back'],
                         help='Кількість днів назад для завантаження попередніх даних')
-    parser.add_argument('--chunk_size', type=int, default=10000,
+    parser.add_argument('--chunk_size', type=int, default=app_config['chunk_size'],
                         help='Розмір чанка для запитів до бази даних')
-    parser.add_argument('--update_chunk', type=int, default=100,
+    parser.add_argument('--update_chunk', type=int, default=app_config['update_chunk'],
                         help='Розмір чанка для оновлення бази даних')
-    parser.add_argument('--db_host', type=str, default='localhost',
+    parser.add_argument('--db_host', type=str, default=db_config['host'],
                         help='Хост бази даних')
-    parser.add_argument('--db_port', type=int, default=5432,
+    parser.add_argument('--db_port', type=int, default=db_config['port'],
                         help='Порт бази даних')
-    parser.add_argument('--db_name', type=str, default='postgres',
+    parser.add_argument('--db_name', type=str, default=db_config['database'],
                         help='Назва бази даних')
-    parser.add_argument('--db_user', type=str, default='postgres',
+    parser.add_argument('--db_user', type=str, default=db_config['user'],
                         help='Користувач бази даних')
-    parser.add_argument('--db_password', type=str, default='mysecretpassword',
+    parser.add_argument('--db_password', type=str, default=db_config['password'],
                         help='Пароль бази даних')
+    parser.add_argument('--env', type=str, default=os.environ.get('APP_ENV', 'development'),
+                        choices=['development', 'production'],
+                        help='Середовище для запуску (development, production)')
     
     args = parser.parse_args()
+    
+    # Оновлюємо змінну середовища на основі аргумента --env
+    if args.env:
+        os.environ['APP_ENV'] = args.env
     
     # Параметри підключення до бази даних
     db_params = {
@@ -77,6 +91,9 @@ def main():
         'user': args.db_user,
         'password': args.db_password
     }
+    
+    logger.info(f"Запуск у середовищі: {os.environ.get('APP_ENV', 'development')}")
+    logger.info(f"Підключення до бази даних: {db_params['host']}:{db_params['port']}/{db_params['database']}")
     
     # Створення з'єднання з базою даних
     try:
@@ -185,6 +202,5 @@ def main():
 
 if __name__ == '__main__':
     main()
-
 
     
