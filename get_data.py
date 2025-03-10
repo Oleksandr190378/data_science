@@ -196,7 +196,7 @@ def load_previous_data(
     chunk_size: int = 10000
 ) -> pd.DataFrame:
     """
-    Завантажує і розраховує середні значення за попередній період для вказаних пошукових термінів.
+    Завантажує та розраховує середні значення за попередній період для вказаних пошукових термінів.
     
     :param engine: SQLAlchemy engine для підключення до бази даних
     :param search_terms: список пошукових термінів для аналізу
@@ -251,7 +251,7 @@ def load_previous_data(
             # Розраховуємо дату початку попереднього періоду (відступаємо на вказану кількість днів)
             previous_start_date = (current_start_date_obj - timedelta(days=days_back)).strftime('%Y-%m-%d')
             # Розраховуємо дату кінця попереднього періоду (день перед поточною датою початку)
-            previous_end_date = (current_start_date_obj - timedelta(days=2)).strftime('%Y-%m-%d')
+            previous_end_date = (current_start_date_obj - timedelta(days=3)).strftime('%Y-%m-%d')
         
         print(f"Завантаження попередніх даних за період: {previous_start_date} - {previous_end_date}")
         
