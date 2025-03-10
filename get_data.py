@@ -1,7 +1,7 @@
 from datetime import datetime, date, timedelta
-from typing import List, Dict, Tuple, Optional, Union
+from typing import List
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import  text
 import numpy as np
 
 
@@ -41,7 +41,7 @@ def get_data_from_db(
         amz_top_3_conversion_share,
         date
     FROM ad_amz_search_term_daily_data
-    WHERE 1=1
+    WHERE id_amz_marketplace = 'US'
     """
     
     # Додаємо умови фільтрації
@@ -230,14 +230,22 @@ def load_previous_data(
             return pd.DataFrame(default_data)
         
         # Визначаємо специфічні періоди порівняння залежно від поточної дати
-        if current_month >= 3 and current_month < 7:
+        if current_month >= 1 and current_month < 4:
             # Для дат з кінця січня до кінця червня використовуємо фіксований період у січні
-            previous_start_date = f"{current_start_date_obj.year}-01-05"
+            previous_start_date = f"{current_start_date_obj.year}-01-15"
             previous_end_date = f"{current_start_date_obj.year}-01-25"
-        elif current_month >= 7 and current_month < 10:
+        elif current_month >= 4 and current_month < 7:
             # Для дат з кінця липня до кінця вересня використовуємо фіксований період у липні
-            previous_start_date = f"{current_start_date_obj.year}-07-05"
+            previous_start_date = f"{current_start_date_obj.year}-03-15"
+            previous_end_date = f"{current_start_date_obj.year}-03-25"
+        elif current_month >= 7 and current_month < 9:
+            # Для дат з кінця липня до кінця вересня використовуємо фіксований період у липні
+            previous_start_date = f"{current_start_date_obj.year}-07-15"
             previous_end_date = f"{current_start_date_obj.year}-07-25"
+        elif current_month == 9:
+            # Для дат з кінця липня до кінця вересня використовуємо фіксований період у липні
+            previous_start_date = f"{current_start_date_obj.year}-08-15"
+            previous_end_date = f"{current_start_date_obj.year}-08-25"        
         else:
             # Для дат з жовтня по грудень використовуємо стандартну логіку
             # Розраховуємо дату початку попереднього періоду (відступаємо на вказану кількість днів)
@@ -263,6 +271,7 @@ def load_previous_data(
             AVG(CASE WHEN total_clicks IS NOT NULL THEN total_clicks ELSE 0 END) as "Average_Clicks"
         FROM ad_amz_search_term_daily_data
         WHERE date BETWEEN :start_date AND :end_date
+        AND id_amz_marketplace = 'US'
         AND id_amz_search_term IN :search_terms
         GROUP BY id_amz_search_term
         """

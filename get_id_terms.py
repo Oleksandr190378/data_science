@@ -57,6 +57,7 @@ def get_unique_search_terms_for_period(
         SELECT DISTINCT id_amz_search_term
         FROM ad_amz_search_term_daily_data
         WHERE date BETWEEN :start_date AND :end_date
+        AND id_amz_marketplace = 'US'
         ORDER BY id_amz_search_term  -- Додаємо сортування для послідовності
         LIMIT :limit OFFSET :offset
         """)

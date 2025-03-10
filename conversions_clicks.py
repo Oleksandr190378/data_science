@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 from typing import List, Dict, Tuple, Optional
 from datetime import datetime
-from sqlalchemy import create_engine, text
 from get_id_terms import get_unique_search_terms_for_period, get_date_range
 from get_data import get_data_from_db, load_data_for_term_and_date, load_previous_data
 
@@ -52,9 +51,11 @@ def find_conversions(row: pd.Series, prev_avg_orders: float = 1) -> Tuple[Dict[s
     elif row['SFR'] <= 10000 and row['SFR'] > 5000:
         min_order_threshold = max(1, prev_avg_orders * 0.76)
     elif row['SFR'] > 10000 and row['SFR'] <= 40000:
-        min_order_threshold = max(1, prev_avg_orders * 0.72)
-    else:
         min_order_threshold = max(1, prev_avg_orders * 0.7)
+    elif row['SFR'] > 40000 and row['SFR'] <= 100000:
+        min_order_threshold = max(1, prev_avg_orders * 0.65)    
+    else:
+        min_order_threshold = max(1, prev_avg_orders * 0.55)
     # Дефолтні значення
     delta = 0.025
     start = 1
@@ -106,17 +107,20 @@ def find_conversions(row: pd.Series, prev_avg_orders: float = 1) -> Tuple[Dict[s
     # Визначаємо параметри a та b за допомогою таблиці пошуку
     ab_lookup = [
         # SFR range, a, b
-        ((0, 100), 1800, 80),
-        ((100, 300), 1500, 80),
-        ((300, 500), 1250, 80),
-        ((500, 1000), 1050, 65),
-        ((1000, 2000), 900, 60),
-        ((2000, 2700), 680, 50),
-        ((2700, 3500), 500, 50),
-        ((3500, 5000), 430, 45),
-        ((5000, 15000), 375, 40),
+        ((0, 100), 2100, 85),
+        ((100, 300), 1800, 80),
+        ((300, 500), 1450, 80),
+        ((500, 1000), 1150, 65),
+        ((1000, 2000), 950, 60),
+        ((2000, 2700), 780, 50),
+        ((2700, 3500), 600, 50),
+        ((3500, 5000), 470, 45),
+        ((5000, 15000), 395, 40),
         ((15000, 35000), 270, 35),
-        ((35000, float('inf')), 220, 30)
+        ((35000, 70000), 220, 30),
+        ((70000, 100000), 160, 25),
+        ((100000, 200000), 100, 20),
+        ((200000, float('inf')), 50, 20)
     ]
     
     a, b = 220, 30  # Дефолтні значення
@@ -193,12 +197,12 @@ def find_clicks(row: pd.Series, conv_row: pd.Series, prev_avg_clicks: float = 1)
     # Визначення таблиці параметрів на основі SFR
     click_params = [
         # SFR range, a (max iterations), b (clicks to orders ratio), delta
-        ((0, 100), 400, 4, 0.02),
-        ((100, 500), 350, 3.6, 0.02),
-        ((500, 1000), 270, 3.4, 0.02),
-        ((1000, 5000), 200, 3.1, 0.025),
-        ((5000, 20000), 140, 2.8, 0.025),
-        ((20000, 50000), 100, 2, 0.025),
+        ((0, 100), 500, 4, 0.02),
+        ((100, 500), 430, 3.6, 0.02),
+        ((500, 1000), 360, 3.4, 0.02),
+        ((1000, 5000), 260, 3.1, 0.025),
+        ((5000, 20000), 180, 2.8, 0.025),
+        ((20000, 50000), 130, 2, 0.025),
         ((50000, 100000), 80, 1.5, 0.025),
         ((100000, float('inf')), 60, 1, 0.025)
     ]
