@@ -14,6 +14,160 @@ def rename_columns(df: pd.DataFrame, column_mapping: Dict[str, str]) -> pd.DataF
     """
     return df.rename(columns=column_mapping)
 
+
+def calculate_seasonal_factor(date):
+    """
+    Розраховує сезонний коефіцієнт для заданої дати з урахуванням конкретних дат для кожного року.
+    
+    :param date_str: дата у форматі 'YYYY-MM-DD'
+    :return: сезонний коефіцієнт (множник для корегування)
+    """
+    #date = datetime.strptime(date_str, '%Y-%m-%d')
+    # Дефолтний коефіцієнт (звичайний день)
+    factor = 1.0
+    
+    year = date.year
+    month = date.month
+    day = date.day
+    
+    # Конкретні дати для Prime Day (змінюються щороку)
+    prime_day_dates = {
+        2022: [(7, 12), (7, 13)],           # 12-13 липня 2022
+        2023: [(7, 11), (7, 12)],           # 11-12 липня 2023
+        2024: [(7, 16), (7, 17)],           # 16-17 липня 2024
+        2025: [(7, 15), (7, 16)]            # Прогноз на 2025
+    }
+    
+    # Конкретні дати для Deal Days / October Prime Day
+    deal_days_dates = {
+        2022: [(10, 11), (10, 12)],         # 11-12 жовтня 2022
+        2023: [(10, 10), (10, 11)],         # 10-11 жовтня 2023
+        2024: [(10, 8), (10, 9)],           # 8-9 жовтня 2024
+        2025: [(10, 7), (10, 8)]            # Прогноз на 2025
+    }
+    
+    # Black Friday (завжди п'ятниця після Дня Подяки)
+    black_friday_dates = {
+        2022: (11, 25),                     # 25 листопада 2022
+        2023: (11, 24),                     # 24 листопада 2023
+        2024: (11, 29),                     # 29 листопада 2024
+        2025: (11, 28)                      # 28 листопада 2025
+    }
+    
+    # Cyber Monday (понеділок після Black Friday)
+    cyber_monday_dates = {
+        2022: (11, 28),                     # 28 листопада 2022
+        2023: (11, 27),                     # 27 листопада 2023
+        2024: (12, 2),                      # 2 грудня 2024
+        2025: (12, 1)                       # 1 грудня 2025
+    }
+    
+    # Перевіряємо чи дата відповідає Prime Day
+    if year in prime_day_dates:
+        exact_prime_days = prime_day_dates[year]
+        if (month, day) in exact_prime_days:
+            return 2.8  # Пік Prime Day
+        
+        # Дні до Prime Day (підготовка)
+        for pd_month, pd_day in exact_prime_days:
+            if month == pd_month and pd_day - 5 <= day < pd_day:
+                return 1.5  # Підготовка до Prime Day
+        
+        # Дні після Prime Day (хвіст)
+        for pd_month, pd_day in exact_prime_days:
+            if month == pd_month and pd_day < day <= pd_day + 3:
+                return 1.8  # Хвіст після Prime Day
+    
+    # Перевіряємо чи дата відповідає Deal Days
+    if year in deal_days_dates:
+        exact_deal_days = deal_days_dates[year]
+        if (month, day) in exact_deal_days:
+            return 2.2  # Пік Deal Days
+        
+        # Дні до Deal Days (підготовка)
+        for dd_month, dd_day in exact_deal_days:
+            if month == dd_month and dd_day - 5 <= day < dd_day:
+                return 1.4  # Підготовка до Deal Days
+        
+        # Дні після Deal Days (хвіст)
+        for dd_month, dd_day in exact_deal_days:
+            if month == dd_month and dd_day < day <= dd_day + 3:
+                return 1.6  # Хвіст після Deal Days
+    
+    # Перевіряємо Black Friday
+    if year in black_friday_dates:
+        bf_month, bf_day = black_friday_dates[year]
+        
+        # Сам Black Friday
+        if month == bf_month and day == bf_day:
+            return 2.8  # Пік Black Friday
+        
+        # Тиждень до Black Friday
+        if month == bf_month and bf_day - 7 <= day < bf_day:
+            return 1.6  # Підготовка до Black Friday
+        
+        # Вихідні після Black Friday
+        if month == bf_month and bf_day < day <= bf_day + 2:
+            return 2.4  # Вихідні після Black Friday
+    
+    # Перевіряємо Cyber Monday
+    if year in cyber_monday_dates:
+        cm_month, cm_day = cyber_monday_dates[year]
+        
+        # Сам Cyber Monday
+        if month == cm_month and day == cm_day:
+            return 2.6  # Пік Cyber Monday
+        
+        # Дні після Cyber Monday
+        if (month == cm_month and cm_day < day <= cm_day + 3):
+            return 1.8  # Дні після Cyber Monday
+    
+    # Різдвяний сезон (грудень)
+    if month == 12:
+        if 1 <= day <= 15:
+            return 1.9  # Перша половина грудня
+        elif 16 <= day <= 20:
+            return 2.2  # Пік перед Різдвом
+        elif 21 <= day <= 24:
+            return 2.4  # Останні дні перед Різдвом
+    
+    # Back to School (серпень)
+    if month == 8:
+        if 1 <= day <= 15:
+            return 1.3  # Початок Back to School
+        elif 16 <= day <= 31:
+            return 1.5  # Пік Back to School
+    
+    # Valentine's Day
+    if month == 2:
+        if 1 <= day <= 7:
+            return 1.2  # Початок лютого
+        elif 8 <= day <= 13:
+            return 1.3  # Дні перед Valentine's Day
+        elif day == 14:
+            return 1.5  # Valentine's Day
+    
+    # Mother's Day (друга неділя травня)
+    mother_day_dates = {
+        2022: (5, 8),
+        2023: (5, 14),
+        2024: (5, 12),
+        2025: (5, 11)
+    }
+    
+    if year in mother_day_dates:
+        md_month, md_day = mother_day_dates[year]
+        
+        # Тиждень перед Mother's Day
+        if month == md_month and md_day - 7 <= day < md_day:
+            return 1.3
+        
+        # Сам Mother's Day
+        if month == md_month and day == md_day:
+            return 1.5
+    
+    # Для всіх інших дат
+    return factor
     
 def find_conversions(row: pd.Series, prev_avg_orders: float = 1) -> Tuple[Dict[str, int], float]:
     """
@@ -44,18 +198,23 @@ def find_conversions(row: pd.Series, prev_avg_orders: float = 1) -> Tuple[Dict[s
                   row['Conversion_Share_3']]
     min_share = min(share for share in conv_shares if share > 0)
     ratios = [share/min_share if share > 0 else 0 for share in conv_shares]
+    date_str = row['Reporting_Date']
+    seasonal_factor = 1.0
+    if date_str:
+        seasonal_factor = calculate_seasonal_factor(date_str)
     
+
     # Розрахунок мінімального порогу замовлень на основі даних попереднього місяця
     if row['SFR'] <= 5000:
-        min_order_threshold = max(1, prev_avg_orders * 0.82)
+        min_order_threshold = max(1, prev_avg_orders * 0.8 * seasonal_factor)
     elif row['SFR'] <= 10000 and row['SFR'] > 5000:
-        min_order_threshold = max(1, prev_avg_orders * 0.76)
+        min_order_threshold = max(1, prev_avg_orders * 0.75 * seasonal_factor)
     elif row['SFR'] > 10000 and row['SFR'] <= 40000:
-        min_order_threshold = max(1, prev_avg_orders * 0.7)
+        min_order_threshold = max(1, prev_avg_orders * 0.7 * seasonal_factor)
     elif row['SFR'] > 40000 and row['SFR'] <= 100000:
-        min_order_threshold = max(1, prev_avg_orders * 0.65)    
+        min_order_threshold = max(1, prev_avg_orders * 0.65 * seasonal_factor)    
     else:
-        min_order_threshold = max(1, prev_avg_orders * 0.55)
+        min_order_threshold = max(1, prev_avg_orders * 0.55 * seasonal_factor)
     # Дефолтні значення
     delta = 0.025
     start = 1
@@ -126,7 +285,7 @@ def find_conversions(row: pd.Series, prev_avg_orders: float = 1) -> Tuple[Dict[s
     a, b = 220, 30  # Дефолтні значення
     for sfr_range, a_val, b_val in ab_lookup:
         if sfr_range[0] < row['SFR'] <= sfr_range[1]:
-            a, b = a_val, b_val
+            a, b = int(a_val * seasonal_factor), int(b_val * seasonal_factor)
             break
             
     # Пошук валідних комбінацій замовлень
@@ -192,19 +351,20 @@ def find_clicks(row: pd.Series, conv_row: pd.Series, prev_avg_clicks: float = 1)
     click_ratios = [share/min_click_share if share > 0 else 0 for share in click_shares]
     
     # Розрахунок мінімального порогу кліків на основі даних попереднього місяця
-    min_click_threshold = max(1, prev_avg_clicks * 0.6)
+    min_click_threshold = max(1, prev_avg_clicks * 0.65)
     
     # Визначення таблиці параметрів на основі SFR
     click_params = [
         # SFR range, a (max iterations), b (clicks to orders ratio), delta
         ((0, 100), 500, 4, 0.02),
-        ((100, 500), 430, 3.6, 0.02),
-        ((500, 1000), 360, 3.4, 0.02),
-        ((1000, 5000), 260, 3.1, 0.025),
-        ((5000, 20000), 180, 2.8, 0.025),
-        ((20000, 50000), 130, 2, 0.025),
-        ((50000, 100000), 80, 1.5, 0.025),
-        ((100000, float('inf')), 60, 1, 0.025)
+        ((100, 500), 430, 3.8, 0.02),
+        ((500, 1000), 360, 3.6, 0.02),
+        ((1000, 5000), 260, 3.3, 0.025),
+        ((5000, 20000), 180, 3, 0.025),
+        ((20000, 50000), 130, 2.5, 0.025),
+        ((50000, 100000), 80, 1.8, 0.025),
+        ((100000, 200000), 60, 1.5, 0.025),
+        ((200000, float('inf')), 60, 1, 0.025)
     ]
     
     # Отримання параметрів з таблиці пошуку

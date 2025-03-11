@@ -332,7 +332,7 @@ def process_orders_and_clicks(results_list):
                 total_clicks = df_processed.at[idx, 'Total_Clicks']
                 
                 # Якщо кліків менше ніж 2*замовлення або вони дорівнюють 0, збільшуємо їх
-                if total_clicks < total_orders * 2 or total_clicks == 0:
+                if total_clicks < total_orders * 2.5 or total_clicks == 0:
                     # Множник для збільшення кліків (мінімум 2)
                     multiplier = max(2, round((total_orders * 2) / max(1, total_clicks)))
                     

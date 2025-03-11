@@ -192,11 +192,12 @@ def load_previous_data(
     engine,
     search_terms: List[int],
     current_start_date: str,
-    days_back: int = 25,
+    days_back: int = 7,
     chunk_size: int = 10000
 ) -> pd.DataFrame:
     """
     Завантажує та розраховує середні значення за попередній період для вказаних пошукових термінів.
+    Враховує сезонні піки продажів.
     
     :param engine: SQLAlchemy engine для підключення до бази даних
     :param search_terms: список пошукових термінів для аналізу
@@ -210,10 +211,26 @@ def load_previous_data(
         current_start_date_obj = datetime.strptime(current_start_date, '%Y-%m-%d')
         current_month = current_start_date_obj.month
         current_day = current_start_date_obj.day
-
+        
+        # Перевіряємо, чи поточна дата припадає на сезонний пік
+        is_peak_season = False
+        
+        # Black Friday / Cyber Monday
+        if (current_month == 11 and current_day >= 20 and current_day <= 30):
+            is_peak_season = True
+        # Різдвяний сезон
+        elif (current_month == 12 and current_day <= 20):
+            is_peak_season = True
+        # Prime Day
+        elif (current_month == 7 and 10 <= current_day <= 20):
+            is_peak_season = True
+        # Deal Days / October Prime Day
+        elif (current_month == 10 and 10 <= current_day <= 15):
+            is_peak_season = True
+        
         # Створюємо порожній DataFrame для спеціальних періодів
-        if (current_month == 1 and current_day <= 26) or (current_month == 7 and current_day <= 26):
-            # Для періодів 01.01-01.26 та 07.01-07.26 повертаємо порожні значення
+        if (current_month == 1 and current_day <= 26) or (current_month == 12 and current_day > 25) :
+            # Для періодів 01.01-01.26  12.25-12.31 повертаємо порожні значення
             if not search_terms or len(search_terms) == 0:
                 return pd.DataFrame(columns=["Search_Term", "Average_Orders", "Average_Clicks"])
             
@@ -230,28 +247,47 @@ def load_previous_data(
             return pd.DataFrame(default_data)
         
         # Визначаємо специфічні періоди порівняння залежно від поточної дати
-        if current_month >= 1 and current_month < 4:
-            # Для дат з кінця січня до кінця червня використовуємо фіксований період у січні
-            previous_start_date = f"{current_start_date_obj.year}-01-15"
-            previous_end_date = f"{current_start_date_obj.year}-01-25"
-        elif current_month >= 4 and current_month < 7:
-            # Для дат з кінця липня до кінця вересня використовуємо фіксований період у липні
-            previous_start_date = f"{current_start_date_obj.year}-03-15"
-            previous_end_date = f"{current_start_date_obj.year}-03-25"
-        elif current_month >= 7 and current_month < 9:
-            # Для дат з кінця липня до кінця вересня використовуємо фіксований період у липні
-            previous_start_date = f"{current_start_date_obj.year}-07-15"
-            previous_end_date = f"{current_start_date_obj.year}-07-25"
-        elif current_month == 9:
-            # Для дат з кінця липня до кінця вересня використовуємо фіксований період у липні
-            previous_start_date = f"{current_start_date_obj.year}-08-15"
-            previous_end_date = f"{current_start_date_obj.year}-08-25"        
+        if is_peak_season:
+            # Для піків продажів використовуємо дані перед піком або з аналогічного періоду минулого місяця
+            if current_month == 11 and current_day >= 20:  # Black Friday
+                # Використовуємо початок листопада перед Black Friday
+                previous_start_date = f"{current_start_date_obj.year}-11-01"
+                previous_end_date = f"{current_start_date_obj.year}-11-07"
+            elif current_month == 12:  # Різдвяний сезон
+                # Використовуємо початок грудня
+                previous_start_date = f"{current_start_date_obj.year}-12-01"
+                previous_end_date = f"{current_start_date_obj.year}-12-07"
+            elif current_month == 7 and 10 <= current_day <= 20:  # Prime Day
+                # Використовуємо початок липня перед Prime Day
+                previous_start_date = f"{current_start_date_obj.year}-07-01"
+                previous_end_date = f"{current_start_date_obj.year}-07-07"
+            elif current_month == 10 and 10 <= current_day <= 15:  # Deal Days
+                # Використовуємо початок жовтня перед Deal Days
+                previous_start_date = f"{current_start_date_obj.year}-10-01"
+                previous_end_date = f"{current_start_date_obj.year}-10-07"
+            else:
+                # Для інших піків використовуємо стандартну логіку
+                previous_start_date = (current_start_date_obj - timedelta(days=days_back)).strftime('%Y-%m-%d')
+                previous_end_date = (current_start_date_obj - timedelta(days=3)).strftime('%Y-%m-%d')
+        elif current_month >= 1 and current_month < 3:
+            # Для дат з кінця січня до кінця березня використовуємо фіксований період у січні
+            previous_start_date = f"{current_start_date_obj.year}-02-02"
+            previous_end_date = f"{current_start_date_obj.year}-02-05"
+        elif current_month >= 3 and current_month < 5:
+            previous_start_date = f"{current_start_date_obj.year}-02-20"
+            previous_end_date = f"{current_start_date_obj.year}-02-27"
+        elif current_month >= 5 and current_month < 7:
+            previous_start_date = f"{current_start_date_obj.year}-04-20"
+            previous_end_date = f"{current_start_date_obj.year}-04-27"    
+        elif current_month >= 7 and current_month < 10:
+            previous_start_date = f"{current_start_date_obj.year}-06-20"
+            previous_end_date = f"{current_start_date_obj.year}-06-27"
+        elif current_month == 10 :
+            previous_start_date = f"{current_start_date_obj.year}-09-15"
+            previous_end_date = f"{current_start_date_obj.year}-09-25"        
         else:
-            # Для дат з жовтня по грудень використовуємо стандартну логіку
-            # Розраховуємо дату початку попереднього періоду (відступаємо на вказану кількість днів)
-            previous_start_date = (current_start_date_obj - timedelta(days=days_back)).strftime('%Y-%m-%d')
-            # Розраховуємо дату кінця попереднього періоду (день перед поточною датою початку)
-            previous_end_date = (current_start_date_obj - timedelta(days=3)).strftime('%Y-%m-%d')
+            previous_start_date = f"{current_start_date_obj.year}-10-01"
+            previous_end_date = f"{current_start_date_obj.year}-10-07"   
         
         print(f"Завантаження попередніх даних за період: {previous_start_date} - {previous_end_date}")
         
@@ -334,7 +370,6 @@ def load_previous_data(
             result_df = pd.concat([result_df, missing_df], ignore_index=True)
         
         return result_df
-        
     except Exception as e:
         print(f"Помилка при завантаженні попередніх даних: {e}")
         # Повертаємо DataFrame з дефолтними значеннями для всіх пошукових термінів
@@ -343,5 +378,6 @@ def load_previous_data(
             "Average_Orders": [1 for _ in range(len(search_terms))],
             "Average_Clicks": [1 for _ in range(len(search_terms))]
         }
-        return pd.DataFrame(default_data)
+        return pd.DataFrame(default_data)    
+            
 
