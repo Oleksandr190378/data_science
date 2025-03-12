@@ -17,7 +17,7 @@ config = {
         'app': {
             'chunk_size': 10000,
             'update_chunk': 100,
-            'days_back': 15
+            'days_back': 10
         }
     },
     'production': {
@@ -31,7 +31,7 @@ config = {
         'app': {
             'chunk_size': 10000,
             'update_chunk': 10000,
-            'days_back': 25
+            'days_back': 10
         }
     }
 }

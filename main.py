@@ -10,6 +10,9 @@ from adjust_conv_click import adjust_clicks_and_orders, process_orders_and_click
 from update_database import update_table_with_results
 from logger import get_logger
 from config import get_config
+from datetime import datetime
+from seasonal_factor import calculate_seasonal_factor
+
 
 # Отримуємо логер для main модуля
 logger = get_logger("main")
@@ -39,6 +42,46 @@ def parse_search_range(range_str):
     except Exception as e:
         logger.error(f"Помилка при обробці діапазону '{range_str}': {str(e)}")
         return None
+    
+
+def is_hot_period(start_date, end_date):
+    """
+    Перевіряє, чи входить період в "гарячий" сезон (коефіцієнт >= 1.4)
+    
+    :param start_date: початкова дата періоду
+    :param end_date: кінцева дата періоду
+    :return: True, якщо період є "гарячим", False - в іншому випадку
+    """
+    # Перетворюємо дати в об'єкти datetime, якщо вони не є ними
+    if isinstance(start_date, str):
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+    if isinstance(end_date, str):
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+    
+    # Розраховуємо середній сезонний коефіцієнт для всього періоду
+    current_date = start_date
+    total_factor = 0
+    days_count = 0
+    
+    while current_date <= end_date:
+        factor = calculate_seasonal_factor(current_date)
+        total_factor += factor
+        days_count += 1
+        current_date = current_date.replace(day=current_date.day + 1)
+    
+    # Обчислюємо середній коефіцієнт
+    avg_factor = total_factor / days_count if days_count > 0 else 0
+    
+    # Перевіряємо, чи є період "гарячим"
+    is_hot = avg_factor >= 1.4
+    
+    if is_hot:
+        logger.info(f"Період з {start_date.strftime('%Y-%m-%d')} по {end_date.strftime('%Y-%m-%d')} є гарячим (середній коефіцієнт: {avg_factor:.2f})")
+    else:
+        logger.info(f"Період з {start_date.strftime('%Y-%m-%d')} по {end_date.strftime('%Y-%m-%d')} не є гарячим (середній коефіцієнт: {avg_factor:.2f})")
+    
+    return is_hot
+    
 
 def main():
     # Отримуємо конфігурацію для поточного середовища
@@ -169,8 +212,16 @@ def main():
     
     # Обробка результатів
     try:
-        logger.info("Коригування кліків та замовлень...")
-        adjusted_results = adjust_clicks_and_orders(results)
+        logger.info("Перевірка періоду на 'гарячість'...")
+        hot_period = is_hot_period(start_date, end_date)
+        
+        # Обробка результатів залежно від того, чи є період "гарячим"
+        if hot_period:
+            logger.info("Період є 'гарячим' (сезонний коефіцієнт >= 1.4). Пропускаємо коригування кліків та замовлень.")
+            adjusted_results = results
+        else:
+            logger.info("Коригування кліків та замовлень...")
+            adjusted_results = adjust_clicks_and_orders(results)
         
         logger.info("Обробка кліків та замовлень...")
         processed_results = process_orders_and_clicks(adjusted_results)

@@ -255,24 +255,23 @@ def load_previous_data(
                 previous_end_date = f"{current_start_date_obj.year}-11-07"
             elif current_month == 12:  # Різдвяний сезон
                 # Використовуємо початок грудня
-                previous_start_date = f"{current_start_date_obj.year}-12-01"
-                previous_end_date = f"{current_start_date_obj.year}-12-07"
+                previous_start_date = f"{current_start_date_obj.year}-11-01"
+                previous_end_date = f"{current_start_date_obj.year}-11-07"
             elif current_month == 7 and 10 <= current_day <= 20:  # Prime Day
                 # Використовуємо початок липня перед Prime Day
                 previous_start_date = f"{current_start_date_obj.year}-07-01"
-                previous_end_date = f"{current_start_date_obj.year}-07-07"
+                previous_end_date = f"{current_start_date_obj.year}-07-06"
             elif current_month == 10 and 10 <= current_day <= 15:  # Deal Days
                 # Використовуємо початок жовтня перед Deal Days
-                previous_start_date = f"{current_start_date_obj.year}-10-01"
-                previous_end_date = f"{current_start_date_obj.year}-10-07"
+                previous_start_date = f"{current_start_date_obj.year}-09-23"
+                previous_end_date = f"{current_start_date_obj.year}-09-30"
             else:
                 # Для інших піків використовуємо стандартну логіку
                 previous_start_date = (current_start_date_obj - timedelta(days=days_back)).strftime('%Y-%m-%d')
                 previous_end_date = (current_start_date_obj - timedelta(days=3)).strftime('%Y-%m-%d')
         elif current_month >= 1 and current_month < 3:
-            # Для дат з кінця січня до кінця березня використовуємо фіксований період у січні
-            previous_start_date = f"{current_start_date_obj.year}-02-02"
-            previous_end_date = f"{current_start_date_obj.year}-02-05"
+            previous_start_date = f"{current_start_date_obj.year}-01-18"
+            previous_end_date = f"{current_start_date_obj.year}-01-24"
         elif current_month >= 3 and current_month < 5:
             previous_start_date = f"{current_start_date_obj.year}-02-20"
             previous_end_date = f"{current_start_date_obj.year}-02-27"
@@ -283,11 +282,11 @@ def load_previous_data(
             previous_start_date = f"{current_start_date_obj.year}-06-20"
             previous_end_date = f"{current_start_date_obj.year}-06-27"
         elif current_month == 10 :
-            previous_start_date = f"{current_start_date_obj.year}-09-15"
+            previous_start_date = f"{current_start_date_obj.year}-09-18"
             previous_end_date = f"{current_start_date_obj.year}-09-25"        
         else:
-            previous_start_date = f"{current_start_date_obj.year}-10-01"
-            previous_end_date = f"{current_start_date_obj.year}-10-07"   
+            previous_start_date = f"{current_start_date_obj.year}-10-23"
+            previous_end_date = f"{current_start_date_obj.year}-10-29"   
         
         print(f"Завантаження попередніх даних за період: {previous_start_date} - {previous_end_date}")
         
