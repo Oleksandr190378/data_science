@@ -10,7 +10,7 @@ from adjust_conv_click import adjust_clicks_and_orders, process_orders_and_click
 from update_database import update_table_with_results
 from logger import get_logger
 from config import get_config
-from datetime import datetime
+from datetime import datetime , timedelta
 from seasonal_factor import calculate_seasonal_factor
 
 
@@ -62,18 +62,20 @@ def is_hot_period(start_date, end_date):
     current_date = start_date
     total_factor = 0
     days_count = 0
+    factors = []
     
     while current_date <= end_date:
         factor = calculate_seasonal_factor(current_date)
+        factors.append(factor)
         total_factor += factor
         days_count += 1
-        current_date = current_date.replace(day=current_date.day + 1)
+        current_date = current_date + timedelta(days=1)
     
     # Обчислюємо середній коефіцієнт
     avg_factor = total_factor / days_count if days_count > 0 else 0
-    
+    max_min_factor = max(factors) - min(factors)
     # Перевіряємо, чи є період "гарячим"
-    is_hot = avg_factor >= 1.4
+    is_hot = (avg_factor >= 1.4 or max_min_factor > 0.1)
     
     if is_hot:
         logger.info(f"Період з {start_date.strftime('%Y-%m-%d')} по {end_date.strftime('%Y-%m-%d')} є гарячим (середній коефіцієнт: {avg_factor:.2f})")

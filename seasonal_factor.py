@@ -73,33 +73,33 @@ def calculate_seasonal_factor(date_obj):
     if year in prime_day_dates:
         exact_prime_days = prime_day_dates[year]
         if (month, day) in exact_prime_days:
-            return 2.8  # Пік Prime Day
+            return 3.0  # Пік Prime Day
         
         # Дні до Prime Day (підготовка)
         for pd_month, pd_day in exact_prime_days:
-            if month == pd_month and pd_day - 5 <= day < pd_day:
-                return 1.5  # Підготовка до Prime Day
+            if month == pd_month and pd_day - 10 <= day < pd_day:
+                return 0.9  # Підготовка до Prime Day
         
         # Дні після Prime Day (хвіст)
         for pd_month, pd_day in exact_prime_days:
-            if month == pd_month and pd_day < day <= pd_day + 3:
-                return 1.8  # Хвіст після Prime Day
+            if month == pd_month and pd_day < day <= pd_day + 7:
+                return 0.9  # Хвіст після Prime Day
     
     # Перевіряємо чи дата відповідає Deal Days
     if year in deal_days_dates:
         exact_deal_days = deal_days_dates[year]
         if (month, day) in exact_deal_days:
-            return 2.2  # Пік Deal Days
+            return 2.5  # Пік Deal Days
         
         # Дні до Deal Days (підготовка)
         for dd_month, dd_day in exact_deal_days:
             if month == dd_month and dd_day - 5 <= day < dd_day:
-                return 1.4  # Підготовка до Deal Days
+                return 0.9  # Підготовка до Deal Days
         
         # Дні після Deal Days (хвіст)
         for dd_month, dd_day in exact_deal_days:
-            if month == dd_month and dd_day < day <= dd_day + 3:
-                return 1.6  # Хвіст після Deal Days
+            if month == dd_month and dd_day < day <= dd_day + 5:
+                return 0.9  # Хвіст після Deal Days
     
     # Перевіряємо Black Friday
     bf_date = black_friday_date
@@ -116,24 +116,24 @@ def calculate_seasonal_factor(date_obj):
     # Вихідні після Black Friday
     weekend_after_bf = bf_date + timedelta(days=2)
     if bf_date < date_obj <= weekend_after_bf:
-        return 2.4  # Вихідні після Black Friday
+        return 2  # Вихідні після Black Friday
     
     # Перевіряємо Cyber Monday
     cm_date = cyber_monday_date
     
     # Сам Cyber Monday
     if date_obj == cm_date:
-        return 2.6  # Пік Cyber Monday
+        return 3.0  # Пік Cyber Monday
     
     # Дні після Cyber Monday
     days_after_cm = cm_date + timedelta(days=3)
     if cm_date < date_obj <= days_after_cm:
-        return 1.8  # Дні після Cyber Monday
+        return 1.4  # Дні після Cyber Monday
     
     # Різдвяний сезон (грудень)
     if month == 12:
         if 1 <= day <= 15:
-            return 1.9  # Перша половина грудня
+            return 1.5  # Перша половина грудня
         elif 16 <= day <= 20:
             return 2.2  # Пік перед Різдвом
         elif 21 <= day <= 24:
@@ -165,7 +165,7 @@ def calculate_seasonal_factor(date_obj):
     
     # Сам Mother's Day
     if date_obj == md_date:
-        return 1.5
+        return 1.4
     
     # Для всіх інших дат
     return factor
