@@ -27,7 +27,7 @@ def get_date_range(period: str, value: int, year: int) -> Tuple[str, str]:
         while first_day.weekday() != 0:  # 0 - понеділок
             first_day += timedelta(days=1)
         # Додаємо потрібну кількість тижнів
-        start_date = first_day + timedelta(weeks=value-1, days=-1) 
+        start_date = first_day + timedelta(weeks=value-2, days=-1) 
         # Кінець тижня (неділя)
         end_date = start_date + timedelta(days=6)
     else:
@@ -57,7 +57,7 @@ def get_unique_search_terms_for_period(
         SELECT DISTINCT id_amz_search_term
         FROM ad_amz_search_term_daily_data
         WHERE date BETWEEN :start_date AND :end_date
-        AND id_amz_marketplace = 'US'
+        AND id_amz_marketplace = 2
         ORDER BY id_amz_search_term  -- Додаємо сортування для послідовності
         LIMIT :limit OFFSET :offset
         """)

@@ -133,27 +133,27 @@ def calculate_seasonal_factor(date_obj):
     # Різдвяний сезон (грудень)
     if month == 12:
         if 1 <= day <= 15:
-            return 1.5  # Перша половина грудня
+            return 1.45  # Перша половина грудня
         elif 16 <= day <= 20:
-            return 2.2  # Пік перед Різдвом
+            return 2  # Пік перед Різдвом
         elif 21 <= day <= 24:
-            return 2.4  # Останні дні перед Різдвом
+            return 2.1  # Останні дні перед Різдвом
     
     # Back to School (серпень)
     if month == 8:
         if 1 <= day <= 15:
-            return 1.3  # Початок Back to School
+            return 1.25  # Початок Back to School
         elif 16 <= day <= 31:
-            return 1.5  # Пік Back to School
+            return 1.3  # Пік Back to School
     
     # Valentine's Day
     if month == 2:
         if 1 <= day <= 7:
             return 1.2  # Початок лютого
         elif 8 <= day <= 13:
-            return 1.3  # Дні перед Valentine's Day
+            return 1.22  # Дні перед Valentine's Day
         elif day == 14:
-            return 1.5  # Valentine's Day
+            return 1.3  # Valentine's Day
     
     # Mother's Day
     md_date = mothers_day_date
@@ -161,11 +161,11 @@ def calculate_seasonal_factor(date_obj):
     # Тиждень перед Mother's Day
     week_before_md = md_date - timedelta(days=7)
     if week_before_md <= date_obj < md_date:
-        return 1.3
+        return 1.2
     
     # Сам Mother's Day
     if date_obj == md_date:
-        return 1.4
+        return 1.25
     
     # Для всіх інших дат
     return factor

@@ -75,7 +75,7 @@ def is_hot_period(start_date, end_date):
     avg_factor = total_factor / days_count if days_count > 0 else 0
     max_min_factor = max(factors) - min(factors)
     # Перевіряємо, чи є період "гарячим"
-    is_hot = (avg_factor >= 1.4 or max_min_factor > 0.1)
+    is_hot = (avg_factor >= 1.25 or max_min_factor > 0.1)
     
     if is_hot:
         logger.info(f"Період з {start_date.strftime('%Y-%m-%d')} по {end_date.strftime('%Y-%m-%d')} є гарячим (середній коефіцієнт: {avg_factor:.2f})")
@@ -121,6 +121,8 @@ def main():
     parser.add_argument('--env', type=str, default=os.environ.get('APP_ENV', 'development'),
                         choices=['development', 'production'],
                         help='Середовище для запуску (development, production)')
+    parser.add_argument('--list_ids', type=str, default=None,
+                        help='Список ID пошукових запитів для аналізу (наприклад, "2108,2316,2596")')
     
     args = parser.parse_args()
     
@@ -181,6 +183,16 @@ def main():
         selected_terms = search_terms
         logger.info(f"Використовуємо всі {len(search_terms)} пошукових термінів")
     
+        # Якщо передано список ID, фільтруємо пошукові терміни за цими ID
+    if args.list_ids:
+        try:
+            list_ids = [int(id) for id in args.list_ids.split(',')]
+            selected_terms = [term for term in selected_terms if term in list_ids]
+            logger.info(f"Використовуємо пошукові терміни зі списку ID: {args.list_ids} ({len(selected_terms)} термінів)")
+        except Exception as e:
+            logger.error(f"Помилка при обробці списку ID: {str(e)}")
+            return
+
     # Завантажуємо дані за попередній період
     try:
         logger.info(f"Завантаження даних за попередні {args.days_back} днів...")

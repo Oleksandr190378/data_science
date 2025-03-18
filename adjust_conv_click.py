@@ -73,27 +73,29 @@ def get_order_thresholds(sfr: float):
     sfr = round(sfr)
     
     if sfr <= 100:
-        return 1700, 300
+        return 1900, 300
     elif sfr <= 330:
-        return 1500, 290
+        return 1650, 290
     elif sfr <= 500:
-        return 1350, 270
+        return 1450, 270
     elif sfr <= 1000:
-        return 1200, 240
+        return 1300, 240
     elif sfr <= 2000:
-        return 950, 180
+        return 1050, 180
     elif sfr <= 2700:
-        return 700, 140 
+        return 900, 140 
     elif sfr <= 3500:
-        return 550, 130
+        return 700, 130
     elif sfr <= 5000:
-        return 430, 110
+        return 530, 110
     elif sfr <= 10000:
-        return 370, 80
+        return 400, 80
     elif sfr <= 20000:
-        return 310, 45
+        return 340, 45
     elif sfr <= 35000:
-        return 230, 20
+        return 250, 20
+    elif sfr <= 85000:
+        return 200, 20
     else:
         return 150, 0
 

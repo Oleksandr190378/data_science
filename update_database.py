@@ -89,6 +89,7 @@ def update_table_with_results(
                 WHERE 
                     id_amz_search_term = :id_amz_search_term
                     AND date = :date
+                    AND  id_amz_marketplace = 2
                 """)
                 
                 try:

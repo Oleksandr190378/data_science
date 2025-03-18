@@ -41,7 +41,7 @@ def get_data_from_db(
         amz_top_3_conversion_share,
         date
     FROM ad_amz_search_term_daily_data
-    WHERE id_amz_marketplace = 'US'
+    WHERE id_amz_marketplace = 2
     """
     
     # Додаємо умови фільтрації
@@ -270,8 +270,8 @@ def load_previous_data(
                 previous_start_date = (current_start_date_obj - timedelta(days=days_back)).strftime('%Y-%m-%d')
                 previous_end_date = (current_start_date_obj - timedelta(days=3)).strftime('%Y-%m-%d')
         elif current_month >= 1 and current_month < 3:
-            previous_start_date = f"{current_start_date_obj.year}-01-18"
-            previous_end_date = f"{current_start_date_obj.year}-01-24"
+            previous_start_date = f"{current_start_date_obj.year}-02-02"
+            previous_end_date = f"{current_start_date_obj.year}-02-05"
         elif current_month >= 3 and current_month < 5:
             previous_start_date = f"{current_start_date_obj.year}-02-20"
             previous_end_date = f"{current_start_date_obj.year}-02-27"
@@ -306,7 +306,7 @@ def load_previous_data(
             AVG(CASE WHEN total_clicks IS NOT NULL THEN total_clicks ELSE 0 END) as "Average_Clicks"
         FROM ad_amz_search_term_daily_data
         WHERE date BETWEEN :start_date AND :end_date
-        AND id_amz_marketplace = 'US'
+        AND id_amz_marketplace = 2
         AND id_amz_search_term IN :search_terms
         GROUP BY id_amz_search_term
         """
