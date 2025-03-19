@@ -6,8 +6,9 @@
 
 1. Клонуйте репозиторій:
 ```bash
-git clone https://github.com/Oleksandr190378/data-science.git
-cd data-science
+git clone https://github.com/Oleksandr190378/data_science.git
+cd data_science
+git checkout search_terms
 ```
 
 2. Створіть та активуйте віртуальне середовище:
