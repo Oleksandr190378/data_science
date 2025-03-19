@@ -54,9 +54,9 @@ def find_conversions(row: pd.Series, prev_avg_orders: float = 1) -> Tuple[Dict[s
 
     # Розрахунок мінімального порогу замовлень на основі даних попереднього місяця
     if row['SFR'] <= 5000:
-        min_order_threshold = max(1, prev_avg_orders * 0.8 * seasonal_factor)
+        min_order_threshold = max(1, prev_avg_orders * 0.77 * seasonal_factor)
     elif row['SFR'] <= 10000 and row['SFR'] > 5000:
-        min_order_threshold = max(1, prev_avg_orders * 0.75 * seasonal_factor)
+        min_order_threshold = max(1, prev_avg_orders * 0.74 * seasonal_factor)
     elif row['SFR'] > 10000 and row['SFR'] <= 40000:
         min_order_threshold = max(1, prev_avg_orders * 0.7 * seasonal_factor)
     elif row['SFR'] > 40000 and row['SFR'] <= 100000:
@@ -114,18 +114,18 @@ def find_conversions(row: pd.Series, prev_avg_orders: float = 1) -> Tuple[Dict[s
     # Визначаємо параметри a та b за допомогою таблиці пошуку
     ab_lookup = [
         # SFR range, a, b
-        ((0, 100), 2100, 85),
-        ((100, 300), 1800, 80),
-        ((300, 500), 1450, 80),
-        ((500, 1000), 1150, 65),
-        ((1000, 2000), 950, 60),
-        ((2000, 2700), 780, 50),
-        ((2700, 3500), 600, 50),
-        ((3500, 5000), 470, 45),
-        ((5000, 15000), 395, 40),
-        ((15000, 35000), 270, 35),
-        ((35000, 70000), 220, 30),
-        ((70000, 100000), 160, 25),
+        ((0, 100), 2100, 95),
+        ((100, 300), 1800, 90),
+        ((300, 500), 1400, 90),
+        ((500, 1000), 1100, 75),
+        ((1000, 2000), 920, 70),
+        ((2000, 2700), 750, 60),
+        ((2700, 3500), 580, 60),
+        ((3500, 5000), 460, 55),
+        ((5000, 15000), 375, 50),
+        ((15000, 35000), 260, 35),
+        ((35000, 70000), 200, 30),
+        ((70000, 100000), 150, 25),
         ((100000, 200000), 100, 20),
         ((200000, float('inf')), 50, 20)
     ]

@@ -1,17 +1,19 @@
 import pandas as pd
 import argparse
 import os
+import calendar
+from datetime import datetime
 from sqlalchemy import create_engine, text
 from get_id_terms import get_unique_search_terms_for_period, get_date_range
-from week.get_weekly_data import get_daily_data, check_daily_data_availability
-from week.weekly_conversions_clicks import analyze_weekly_search_terms
-from week.update_weekly_database import update_weekly_table_with_results
+from month.get_monthly_data import get_daily_data, check_daily_data_availability
+from month.monthly_conversions_clicks import analyze_monthly_search_terms
+from month.update_monthly_database import update_monthly_table_with_results
 from config import get_config
-from logger import get_logger  # Import the logger module used in main.py
+from logger import get_logger
 
 
-# Get logger for main_weekly module
-logger = get_logger("main_weekly")
+# Get logger for main_monthly module
+logger = get_logger("main_monthly")
 
 
 def main():
@@ -21,9 +23,9 @@ def main():
     app_config = current_config['app']
     
     # Парсинг аргументів командного рядка
-    parser = argparse.ArgumentParser(description='Аналіз тижневих даних Amazon')
-    parser.add_argument('--week', type=int, required=True,
-                      help='Номер тижня для аналізу')
+    parser = argparse.ArgumentParser(description='Аналіз місячних даних Amazon')
+    parser.add_argument('--month', type=int, required=True,
+                      help='Номер місяця для аналізу (1-12)')
     parser.add_argument('--year', type=int, default=2025,
                       help='Рік для аналізу')
     parser.add_argument('--search_range', type=str, default=None,
@@ -50,6 +52,11 @@ def main():
     
     args = parser.parse_args()
     
+    # Перевірка валідності номера місяця
+    if args.month < 1 or args.month > 12:
+        logger.error(f"Невірний номер місяця: {args.month}. Повинен бути від 1 до 12.")
+        return
+    
     # Оновлюємо змінну середовища на основі аргумента --env
     if args.env:
         os.environ['APP_ENV'] = args.env
@@ -73,10 +80,16 @@ def main():
         logger.error(f"Помилка при підключенні до бази даних: {str(e)}")
         return
     
-    # Отримуємо діапазон дат для вказаного тижня
+    # Отримуємо діапазон дат для вказаного місяця
     try:
-        start_date, end_date = get_date_range('week', args.week, args.year)
-        logger.info(f"Аналіз даних для тижня {args.week} ({start_date} - {end_date})")
+        # Визначаємо перший і останній день місяця
+        year = args.year
+        month = args.month
+        last_day = calendar.monthrange(year, month)[1]
+        start_date = f"{year}-{month:02d}-01"
+        end_date = f"{year}-{month:02d}-{last_day:02d}"
+        
+        logger.info(f"Аналіз даних для місяця {args.month} ({start_date} - {end_date})")
     except Exception as e:
         logger.error(f"Помилка при визначенні дат: {str(e)}")
         return
@@ -119,27 +132,27 @@ def main():
             logger.warning("Для цього періоду ще немає щоденних даних конверсій та кліків. Спочатку запустіть main.py для обробки щоденних даних.")
             return
         
-        # Перевіряємо, чи існують записи в тижневій таблиці
-        check_weekly_query = text(f"""
-        SELECT COUNT(*) FROM ad_amz_search_term_weekly_data 
-        WHERE week = {args.week} AND year = {args.year}
+        # Перевіряємо, чи існують записи в місячній таблиці
+        check_monthly_query = text(f"""
+        SELECT COUNT(*) FROM ad_amz_search_term_monthly_data 
+        WHERE month = {args.month} AND year = {args.year}
         """)
         
         with engine.connect() as connection:
-            weekly_count = connection.execute(check_weekly_query).scalar()
+            monthly_count = connection.execute(check_monthly_query).scalar()
         
-        if weekly_count == 0:
-            logger.warning("В тижневій таблиці відсутні записи для цього тижня. Спочатку внесіть частки кліків та конверсій.")
+        if monthly_count == 0:
+            logger.warning("В місячній таблиці відсутні записи для цього місяця. Спочатку внесіть частки кліків та конверсій.")
             return
             
-        logger.info("Знайдено щоденні дані. Починаємо обробку тижневих даних.")
+        logger.info("Знайдено щоденні дані. Починаємо обробку місячних даних.")
         
-        # Аналіз пошукових термінів для тижневих даних
-        results = analyze_weekly_search_terms(
+        # Аналіз пошукових термінів для місячних даних
+        results = analyze_monthly_search_terms(
             engine=engine,
             start_date=start_date,
             end_date=end_date,
-            week_number=args.week,
+            month_number=args.month,
             year=args.year,
             search_list=search_terms
         )
@@ -151,15 +164,15 @@ def main():
         logger.info(f"Отримано результати для {len(results)} пошукових термінів.")
         
         # Оновлюємо тільки поля кліків та замовлень в таблиці
-        update_weekly_table_with_results(
+        update_monthly_table_with_results(
             engine=engine,
             result_dfs=results,
-            week_number=args.week,
+            month_number=args.month,
             year=args.year,
             chunk_size=args.update_chunk
         )
         
-        logger.info("Аналіз тижневих даних успішно завершено.")
+        logger.info("Аналіз місячних даних успішно завершено.")
     except Exception as e:
         logger.error(f"Помилка при обробці даних: {str(e)}")
         return
@@ -167,4 +180,3 @@ def main():
 if __name__ == '__main__':
     main()
 
-    

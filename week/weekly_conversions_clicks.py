@@ -1,9 +1,8 @@
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Tuple, Optional
-#from datetime import datetime, timedelta
-from get_weekly_data import get_daily_data, get_weekly_seasonal_factor
-from get_weekly_shares import get_weekly_shares
+from week.get_weekly_data import get_daily_data, get_weekly_seasonal_factor
+from week.get_weekly_shares import get_weekly_shares
 
 
 def analyze_weekly_search_terms(
@@ -141,8 +140,8 @@ def find_weekly_conversions(row: pd.Series, daily_total_orders: float = 0) -> Tu
 
     # Розрахунок мінімального порогу замовлень на основі даних за тиждень
     # Використовуємо щоденні дані, помножені на коефіцієнт, як обмеження
-    min_order_threshold = daily_total_orders * 0.6 * seasonal_factor
-    max_order_threshold = daily_total_orders * 2.0 * seasonal_factor
+    min_order_threshold = daily_total_orders * 0.55 
+    max_order_threshold = daily_total_orders * 1.9 
     
     # Дефолтні значення для пошуку
     delta = 0.025
@@ -239,7 +238,8 @@ def find_weekly_conversions(row: pd.Series, daily_total_orders: float = 0) -> Tu
                     }, delta
         delta += 0.02
         if delta > 2.5:
-            max_order_threshold = daily_total_orders * 2.5 * seasonal_factor   
+            min_order_threshold = daily_total_orders * 0.45 
+            max_order_threshold = daily_total_orders * 2.3    
 
         
     # Якщо немає підібраних даних, повертаємо нулі 
