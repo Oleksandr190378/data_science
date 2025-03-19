@@ -140,7 +140,7 @@ def find_weekly_conversions(row: pd.Series, daily_total_orders: float = 0) -> Tu
 
     # Розрахунок мінімального порогу замовлень на основі даних за тиждень
     # Використовуємо щоденні дані, помножені на коефіцієнт, як обмеження
-    min_order_threshold = daily_total_orders * 0.55 
+    min_order_threshold = daily_total_orders * 0.6 
     max_order_threshold = daily_total_orders * 1.9 
     
     # Дефолтні значення для пошуку

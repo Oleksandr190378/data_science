@@ -21,14 +21,25 @@ def get_date_range(period: str, value: int, year: int) -> Tuple[str, str]:
         else:
             end_date = date(year, value + 1, 1) - timedelta(days=1)
     elif period == 'week':
+        # Система, де тиждень починається з неділі
         # Знаходимо перший день року
         first_day = date(year, 1, 1)
-        # Знаходимо перший день тижня (понеділок)
-        while first_day.weekday() != 0:  # 0 - понеділок
-            first_day += timedelta(days=1)
+        
+        # Знаходимо першу неділю року (або останню неділю попереднього року)
+        # У datetime.weekday() неділя має індекс 6
+        day_of_week = first_day.weekday()
+        # Конвертуємо в систему, де неділя має індекс 0
+        sunday_based_dow = (day_of_week + 1) % 7
+        
+        # Зсуваємося до першої неділі (або назад до останньої неділі попереднього року)
+        first_sunday = first_day - timedelta(days=sunday_based_dow)
+        
+        # Перший тиждень року - це тиждень, що містить 1 січня
+        # Але якщо 1 січня - це не неділя, то перший тиждень починається з неділі перед 1 січня
+        
         # Додаємо потрібну кількість тижнів
-        start_date = first_day + timedelta(weeks=value-2, days=-1) 
-        # Кінець тижня (неділя)
+        start_date = first_sunday + timedelta(weeks=value-1)
+        # Кінець тижня (субота)
         end_date = start_date + timedelta(days=6)
     else:
         raise ValueError("Period must be 'week' or 'month'")
