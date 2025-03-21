@@ -27,7 +27,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4. Налаштуйте параметри підключення до бази даних у файлі `config.py`.
+4. Налаштуйте параметри підключення до бази даних у файлі `config.py` або через `.env` файл.
 
 ## Налаштування середовищ
 
@@ -49,6 +49,135 @@ python main.py
 # Linux/macOS
 export APP_ENV=production
 python main.py
+```
+
+3. Через `.env` файл:
+```
+APP_ENV=production
+DB_HOST=ваш_хост_бази_даних
+DB_PORT=5432
+DB_NAME=назва_бази_даних
+DB_USER=користувач_бази_даних
+DB_PASSWORD=пароль_бази_даних
+CHUNK_SIZE=10000
+UPDATE_CHUNK=10000
+DAYS_BACK=10
+```
+
+Модифікований config.py автоматично шукає .env файл у таких локаціях:
+* Поточній директорії
+* Батьківській директорії
+* Директорії скрипта
+* Батьківській директорії скрипта
+
+Якщо .env файл не знайдено, скрипт використовуватиме системні змінні середовища або значення за замовчуванням.
+
+## Production налаштування на сервері
+
+### Підготовка сервера
+
+1. **Встановлення необхідних пакетів**:
+```bash
+sudo apt update
+sudo apt install -y python3 python3-pip python3-venv git
+```
+
+2. **Клонування репозиторію**:
+```bash
+mkdir -p ~/projects
+cd ~/projects
+git clone https://github.com/Oleksandr190378/data_science.git
+cd data_science
+git checkout search_terms
+```
+
+3. **Створення та налаштування віртуального середовища**:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+4. **Налаштування .env файлу**:
+
+Створіть `.env` файл у кореневій директорії проекту:
+```bash
+nano .env
+```
+
+Додайте необхідні параметри:
+```
+APP_ENV=production
+DB_HOST=ваш_хост_бази_даних
+DB_PORT=5432
+DB_NAME=назва_бази_даних
+DB_USER=користувач_бази_даних
+DB_PASSWORD=пароль_бази_даних
+CHUNK_SIZE=10000
+UPDATE_CHUNK=10000
+DAYS_BACK=10
+```
+
+### Запуск проекту на сервері
+
+#### Ручний запуск
+
+1. **Активація віртуального середовища**:
+```bash
+cd ~/projects/data_science
+source venv/bin/activate
+```
+
+2. **Запуск аналізу**:
+```bash
+# Для щоденного аналізу (поточний тиждень)
+python main.py --period week --value $(date +%V) --year $(date +%Y)
+
+# Для тижневого аналізу (конкретний тиждень)
+python main_weekly.py --week 5 --year 2025
+
+# Для місячного аналізу
+python main_monthly.py --month 2 --year 2025
+```
+
+3. **Після завершення деактивуйте віртуальне середовище**:
+```bash
+deactivate
+```
+
+#### Запуск у фоновому режимі
+
+Для довготривалих операцій, які повинні продовжуватись після закриття SSH сесії:
+
+```bash
+# Створення директорії для логів
+mkdir -p logs
+
+# Запуск процесу у фоновому режимі
+nohup python main.py --period week --value $(date +%V) --year $(date +%Y) > logs/nohup.log 2>&1 &
+```
+
+Перевірка статусу процесу:
+```bash
+ps aux | grep python
+```
+
+Перегляд логів:
+```bash
+tail -f logs/nohup.log
+```
+
+#### Автоматизація запусків через cron
+
+1. **Відкрийте редактор crontab**:
+```bash
+crontab -e
+```
+
+2. **Додайте рядок для автоматичного запуску** (наприклад, щодня о 2:00):
+```
+0 2 * * * cd ~/projects/data_science && source venv/bin/activate && python main.py --period week --value $(date +\%V) --year $(date +\%Y) >> logs/cron_$(date +\%Y-\%m-\%d).log 2>&1 && deactivate
 ```
 
 ## Використання
@@ -174,3 +303,23 @@ python main_monthly.py --month 2 --year 2025 --list_ids "2108,2316,2596"
    - Спочатку впевніться, що щоденні дані за відповідний місяць вже оброблені
    - Запустіть `main_monthly.py` для розрахунку кліків та конверсій за місяць
    - Результати будуть записані в таблицю `ad_amz_search_term_monthly_data`
+
+## Вирішення проблем
+
+### Проблеми з підключенням до бази даних
+
+Якщо виникають проблеми з підключенням до БД:
+
+1. Перевірте правильність параметрів у `.env` файлі
+2. Переконайтеся, що сервер БД доступний з вашого сервера
+3. Перевірте підключення вручну:
+   ```python
+   python3 -c "from sqlalchemy import create_engine; from config import get_config; cfg = get_config()['db']; print(f\"Підключення до: {cfg['host']}:{cfg['port']}/{cfg['database']}\"); engine = create_engine(f\"postgresql://{cfg['user']}:{cfg['password']}@{cfg['host']}:{cfg['port']}/{cfg['database']}\"); conn = engine.connect(); print('Підключення успішне!'); conn.close()"
+   ```
+
+### Помилки при запуску скриптів
+
+1. Переконайтеся, що віртуальне середовище активоване
+2. Перевірте, чи всі залежності встановлені: `pip list`
+3. Перевірте логи на наявність детальних помилок: `cat logs/*.log`
+
