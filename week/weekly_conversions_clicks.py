@@ -140,7 +140,7 @@ def find_weekly_conversions(row: pd.Series, daily_total_orders: float = 0) -> Tu
 
     # Розрахунок мінімального порогу замовлень на основі даних за тиждень
     # Використовуємо щоденні дані, помножені на коефіцієнт, як обмеження
-    min_order_threshold = daily_total_orders * 0.6 
+    min_order_threshold = daily_total_orders * 0.65 
     max_order_threshold = daily_total_orders * 1.9 
     
     # Дефолтні значення для пошуку
@@ -238,7 +238,7 @@ def find_weekly_conversions(row: pd.Series, daily_total_orders: float = 0) -> Tu
                     }, delta
         delta += 0.02
         if delta > 2.5:
-            min_order_threshold = daily_total_orders * 0.45 
+            min_order_threshold = daily_total_orders * 0.5 
             max_order_threshold = daily_total_orders * 2.3    
 
         
@@ -289,7 +289,7 @@ def find_weekly_clicks(row: pd.Series, conv_row: pd.Series, daily_total_clicks: 
     
     # Розрахунок мінімального порогу кліків на основі даних за тиждень
     # Використовуємо щоденні дані, помножені на коефіцієнт, як обмеження
-    min_click_threshold = daily_total_clicks * 0.6 * seasonal_factor
+    min_click_threshold = daily_total_clicks * 0.65 * seasonal_factor
     max_click_threshold = daily_total_clicks * 2.0 * seasonal_factor
     
     # Визначення таблиці параметрів на основі SFR

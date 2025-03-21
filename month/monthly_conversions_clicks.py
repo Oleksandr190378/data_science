@@ -140,7 +140,7 @@ def find_monthly_conversions(row: pd.Series, daily_total_orders: float = 0) -> T
 
     # Розрахунок мінімального порогу замовлень на основі даних за місяць
     # Використовуємо щоденні дані, помножені на коефіцієнт, як обмеження
-    min_order_threshold = daily_total_orders * 0.6 
+    min_order_threshold = daily_total_orders * 0.65 
     max_order_threshold = daily_total_orders * 1.9 
     
     # Дефолтні значення для пошуку
@@ -238,7 +238,7 @@ def find_monthly_conversions(row: pd.Series, daily_total_orders: float = 0) -> T
                     }, delta
         delta += 0.02
         if delta > 2.5:
-            min_order_threshold = daily_total_orders * 0.45 
+            min_order_threshold = daily_total_orders * 0.5 
             max_order_threshold = daily_total_orders * 2.3 
 
         
@@ -289,7 +289,7 @@ def find_monthly_clicks(row: pd.Series, conv_row: pd.Series, daily_total_clicks:
     
     # Розрахунок мінімального порогу кліків на основі даних за місяць
     # Використовуємо щоденні дані, помножені на коефіцієнт, як обмеження
-    min_click_threshold = daily_total_clicks * 0.6 
+    min_click_threshold = daily_total_clicks * 0.65 
     max_click_threshold = daily_total_clicks * 2.0 
     
     # Визначення таблиці параметрів на основі SFR
