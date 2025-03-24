@@ -140,12 +140,16 @@ def find_monthly_conversions(row: pd.Series, daily_total_orders: float = 0) -> T
 
     # Розрахунок мінімального порогу замовлень на основі даних за місяць
     # Використовуємо щоденні дані, помножені на коефіцієнт, як обмеження
-    min_order_threshold = daily_total_orders * 0.65 
-    max_order_threshold = daily_total_orders * 1.9 
-    
+    if row['SFR'] < 10000:
+        min_order_threshold = daily_total_orders * 0.75 
+        max_order_threshold = daily_total_orders * 1.65
+    else:
+        min_order_threshold = daily_total_orders * 0.65
+        max_order_threshold = daily_total_orders * 1.8    
+        
     # Дефолтні значення для пошуку
     delta = 0.025
-    start = 30  # Збільшуємо стартове значення в порівнянні з щоденним
+    start = 25  # Збільшуємо стартове значення в порівнянні з щоденним
     
     # Визначення параметрів delta і start на основі SFR та min_share
     # Коефіцієнти збільшені в 30 разів у порівнянні з щоденними даними
@@ -288,9 +292,12 @@ def find_monthly_clicks(row: pd.Series, conv_row: pd.Series, daily_total_clicks:
         seasonal_factor = row['Seasonal_Factor']
     
     # Розрахунок мінімального порогу кліків на основі даних за місяць
-    # Використовуємо щоденні дані, помножені на коефіцієнт, як обмеження
-    min_click_threshold = daily_total_clicks * 0.65 
-    max_click_threshold = daily_total_clicks * 2.0 
+    if row['SFR'] < 20000:
+        min_click_threshold = daily_total_clicks * 0.9
+        max_click_threshold = daily_total_clicks * 1.5
+    else:
+        min_click_threshold = daily_total_clicks * 0.8 
+        max_click_threshold = daily_total_clicks * 1.6 
     
     # Визначення таблиці параметрів на основі SFR
     # Коефіцієнти збільшені в 30 разів у порівнянні з щоденними даними
@@ -345,7 +352,8 @@ def find_monthly_clicks(row: pd.Series, conv_row: pd.Series, daily_total_clicks:
         delta += 0.02
         if delta > 2.8:
             a += 50        
-            max_click_threshold = daily_total_clicks * 2.5 * seasonal_factor    
+            max_click_threshold = daily_total_clicks * 2.3
+            min_click_threshold = daily_total_clicks * 0.65   
     # Якщо не знайдено валідних комбінацій
     return {
         'Total_Clicks': 1,
