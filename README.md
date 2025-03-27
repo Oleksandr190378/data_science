@@ -78,8 +78,20 @@ DAYS_BACK=10
 
 1. **Встановлення необхідних пакетів**:
 ```bash
+# Оновлення списку пакетів
 sudo apt update
-sudo apt install -y python3 python3-pip python3-venv git
+
+# Встановлення Python 3
+sudo apt install -y python3
+
+# Перевірка версії Python (опційно)
+python3 --version
+
+# Встановлення додаткових компонентів
+sudo apt install -y python3-pip python3-venv 
+
+# Встановлення Git
+sudo apt install -y git-all
 ```
 
 2. **Клонування репозиторію**:
@@ -95,7 +107,7 @@ git checkout search_terms
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install --upgrade pip
+#pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
@@ -132,7 +144,7 @@ source venv/bin/activate
 2. **Запуск аналізу**:
 ```bash
 # Для щоденного аналізу (поточний тиждень)
-python main.py --period week --value $(date +%V) --year $(date +%Y)
+python main.py --period week --value 5 --year 2025
 
 # Для тижневого аналізу (конкретний тиждень)
 python main_weekly.py --week 5 --year 2025

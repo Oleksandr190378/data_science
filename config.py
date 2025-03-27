@@ -39,7 +39,7 @@ config = {
         'app': {
             'chunk_size': int(os.environ.get('CHUNK_SIZE', 10000)),
             'update_chunk': int(os.environ.get('UPDATE_CHUNK', 100)),
-            'days_back': int(os.environ.get('DAYS_BACK', 10))
+            'days_back': int(os.environ.get('DAYS_BACK', 7))
         }
     },
     'production': {
@@ -53,7 +53,7 @@ config = {
         'app': {
             'chunk_size': int(os.environ.get('CHUNK_SIZE', 10000)),
             'update_chunk': int(os.environ.get('UPDATE_CHUNK', 10000)),
-            'days_back': int(os.environ.get('DAYS_BACK', 10))
+            'days_back': int(os.environ.get('DAYS_BACK', 7))
         }
     }
 }
