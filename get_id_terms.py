@@ -129,7 +129,7 @@ if __name__ == '__main__':
 
     # Визначення періоду
     period = 'week'
-    value = 5
+    value = 9
     year = 2025
     start_date, end_date = get_date_range(period, value, year)
     print(f"Аналіз даних з {start_date} по {end_date}")
@@ -137,4 +137,5 @@ if __name__ == '__main__':
     # Отримуємо список пошукових термінів за весь період
     search_terms = get_unique_search_terms_for_period(engine, start_date, end_date)
     print(f"Знайдено {len(search_terms)} унікальних пошукових термінів") 
+    print(search_terms[9580:9600])
 

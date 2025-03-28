@@ -1,6 +1,7 @@
 import pandas as pd
 import argparse
 import os
+import gc  # Додаємо для виклику збирача сміття
 from sqlalchemy import create_engine
 from get_id_terms import get_unique_search_terms_for_period, get_date_range
 from get_data import load_previous_data
@@ -10,7 +11,7 @@ from adjust_conv_click import adjust_clicks_and_orders, process_orders_and_click
 from update_database import update_table_with_results
 from logger import get_logger
 from config import get_config
-from datetime import datetime , timedelta
+from datetime import datetime, timedelta
 from seasonal_factor import calculate_seasonal_factor
 
 
@@ -83,7 +84,100 @@ def is_hot_period(start_date, end_date):
         logger.info(f"Період з {start_date.strftime('%Y-%m-%d')} по {end_date.strftime('%Y-%m-%d')} не є гарячим (середній коефіцієнт: {avg_factor:.2f})")
     
     return is_hot
+
+
+def process_search_terms_chunk(engine, start_date, end_date, search_terms_chunk, days_back, chunk_size, update_chunk):
+    """
+    Обробляє один чанк пошукових термінів від завантаження даних до оновлення бази даних
     
+    :param engine: з'єднання з базою даних
+    :param start_date: початкова дата аналізу
+    :param end_date: кінцева дата аналізу
+    :param search_terms_chunk: список пошукових термінів для обробки
+    :param days_back: кількість днів назад для попередніх даних
+    :param chunk_size: розмір чанка для запитів до бази даних
+    :param update_chunk: розмір чанка для оновлення бази даних
+    """
+    # Завантажуємо дані за попередній період
+    try:
+        logger.info(f"Завантаження даних за попередні {days_back} днів для чанка з {len(search_terms_chunk)} термінів...")
+        previous_data = load_previous_data(
+            engine=engine,
+            search_terms=search_terms_chunk,
+            current_start_date=start_date,
+            days_back=days_back
+        )
+    except Exception as e:
+        logger.error(f"Помилка при завантаженні попередніх даних для чанка: {str(e)}")
+        return
+    
+    # Аналіз пошукових термінів
+    try:
+        logger.info("Початок аналізу пошукових термінів для чанка...")
+        results = analyze_search_terms(
+            engine=engine,
+            start_date=start_date,
+            end_date=end_date,
+            columns_to_import=columns_to_import,
+            column_mapping=column_mapping,
+            previous_month_data=previous_data,
+            search_list=search_terms_chunk,
+            chunk_size=chunk_size
+        )
+        logger.info(f"Отримано результати для {len(results)} пошукових термінів у чанку")
+        
+        # Звільняємо пам'ять від попередніх даних
+        del previous_data
+        gc.collect()
+    except Exception as e:
+        logger.error(f"Помилка при аналізі пошукових термінів для чанка: {str(e)}")
+        return
+    
+    # Перевірка "гарячості" періоду (виконуємо один раз для всього аналізу)
+    hot_period = is_hot_period(start_date, end_date)
+    
+    # Обробка результатів
+    try:
+        # Обробка результатів залежно від того, чи є період "гарячим"
+        if hot_period:
+            logger.info("Період є 'гарячим'. Пропускаємо коригування кліків та замовлень для чанка.")
+            adjusted_results = results
+        else:
+            logger.info("Коригування кліків та замовлень для чанка...")
+            adjusted_results = adjust_clicks_and_orders(results)
+        
+        # Звільняємо пам'ять від результатів аналізу
+        del results
+        gc.collect()
+        
+        logger.info("Обробка кліків та замовлень для чанка...")
+        processed_results = process_orders_and_clicks(adjusted_results)
+        
+        # Звільняємо пам'ять від відкоригованих результатів
+        del adjusted_results
+        gc.collect()
+        
+    except Exception as e:
+        logger.error(f"Помилка при обробці результатів для чанка: {str(e)}")
+        return
+    
+    # Оновлення бази даних
+    try:
+        logger.info("Оновлення бази даних результатами чанка...")
+        update_table_with_results(
+            engine=engine,
+            result_dfs=processed_results,
+            chunk_size=update_chunk
+        )
+        logger.info("Оновлення бази даних для чанка завершено.")
+        
+        # Звільняємо пам'ять від оброблених результатів
+        del processed_results
+        gc.collect()
+    except Exception as e:
+        logger.error(f"Помилка при оновленні бази даних для чанка: {str(e)}")
+        return
+
 
 def main():
     # Отримуємо конфігурацію для поточного середовища
@@ -108,6 +202,8 @@ def main():
                         help='Розмір чанка для запитів до бази даних')
     parser.add_argument('--update_chunk', type=int, default=app_config['update_chunk'],
                         help='Розмір чанка для оновлення бази даних')
+    parser.add_argument('--max_terms', type=int, default=2000,
+                        help='Максимальна кількість пошукових термінів для обробки за один раз')
     parser.add_argument('--db_host', type=str, default=db_config['host'],
                         help='Хост бази даних')
     parser.add_argument('--db_port', type=int, default=db_config['port'],
@@ -183,7 +279,7 @@ def main():
         selected_terms = search_terms
         logger.info(f"Використовуємо всі {len(search_terms)} пошукових термінів")
     
-        # Якщо передано список ID, фільтруємо пошукові терміни за цими ID
+    # Якщо передано список ID, фільтруємо пошукові терміни за цими ID
     if args.list_ids:
         try:
             list_ids = [int(id) for id in args.list_ids.split(',')]
@@ -192,80 +288,47 @@ def main():
         except Exception as e:
             logger.error(f"Помилка при обробці списку ID: {str(e)}")
             return
-
-    # Завантажуємо дані за попередній період
-    try:
-        logger.info(f"Завантаження даних за попередні {args.days_back} днів...")
-        previous_data = load_previous_data(
-            engine=engine,
-            search_terms=selected_terms,
-            current_start_date=start_date,
-            days_back=args.days_back
-        )
-    except Exception as e:
-        logger.error(f"Помилка при завантаженні попередніх даних: {str(e)}")
-        return
     
-    # Аналіз пошукових термінів
-    try:
-        logger.info("Початок аналізу пошукових термінів...")
-        results = analyze_search_terms(
+    # Перевіряємо розмір списку термінів і обробляємо його по частинах, якщо потрібно
+    if len(selected_terms) > args.max_terms:
+        logger.info(f"Список пошукових термінів перевищує максимальний розмір ({len(selected_terms)} > {args.max_terms})")
+        logger.info(f"Розбиваємо на частини по {args.max_terms//2} термінів")
+        
+        # Розбиваємо на частини
+        chunk_size = args.max_terms // 2  # Розмір чанка вдвічі менший за максимальний розмір
+        term_chunks = [selected_terms[i:i+chunk_size] for i in range(0, len(selected_terms), chunk_size)]
+        
+        # Обробляємо кожну частину окремо
+        for i, chunk in enumerate(term_chunks):
+            logger.info(f"Обробка чанка {i+1}/{len(term_chunks)} з {len(chunk)} термінів")
+            process_search_terms_chunk(
+                engine=engine,
+                start_date=start_date,
+                end_date=end_date,
+                search_terms_chunk=chunk,
+                days_back=args.days_back,
+                chunk_size=args.chunk_size,
+                update_chunk=args.update_chunk
+            )
+            
+            # Звільняємо пам'ять після обробки чанка
+            gc.collect()
+            logger.info(f"Обробка чанка {i+1}/{len(term_chunks)} завершена")
+    else:
+        # Обробляємо весь список термінів як один чанк
+        logger.info(f"Обробка всіх {len(selected_terms)} термінів разом")
+        process_search_terms_chunk(
             engine=engine,
             start_date=start_date,
             end_date=end_date,
-            columns_to_import=columns_to_import,
-            column_mapping=column_mapping,
-            previous_month_data=previous_data,
-            search_list=selected_terms,
-            chunk_size=args.chunk_size
+            search_terms_chunk=selected_terms,
+            days_back=args.days_back,
+            chunk_size=args.chunk_size,
+            update_chunk=args.update_chunk
         )
-        logger.info(f"Отримано результати для {len(results)} пошукових термінів")
-    except Exception as e:
-        logger.error(f"Помилка при аналізі пошукових термінів: {str(e)}")
-        return
-    
-    # Обробка результатів
-    try:
-        logger.info("Перевірка періоду на 'гарячість'...")
-        hot_period = is_hot_period(start_date, end_date)
-        
-        # Обробка результатів залежно від того, чи є період "гарячим"
-        if hot_period:
-            logger.info("Період є 'гарячим' (сезонний коефіцієнт >= 1.4). Пропускаємо коригування кліків та замовлень.")
-            adjusted_results = results
-        else:
-            logger.info("Коригування кліків та замовлень...")
-            adjusted_results = adjust_clicks_and_orders(results)
-        
-        logger.info("Обробка кліків та замовлень...")
-        processed_results = process_orders_and_clicks(adjusted_results)
-        
-        if processed_results and len(processed_results) > 0:
-            sample_df = processed_results[0] if processed_results else None
-            if sample_df is not None and not sample_df.empty:
-                logger.info(f"Приклад результатів:\n{sample_df.head()}")
-        else:
-            logger.warning("Немає результатів після обробки.")
-    except Exception as e:
-        logger.error(f"Помилка при обробці результатів: {str(e)}")
-        return
-    
-    # Оновлення бази даних
-    try:
-        logger.info("Оновлення бази даних результатами...")
-        update_table_with_results(
-            engine=engine,
-            result_dfs=processed_results,
-            chunk_size=args.update_chunk
-        )
-        logger.info("Оновлення бази даних завершено.")
-    except Exception as e:
-        logger.error(f"Помилка при оновленні бази даних: {str(e)}")
-        return
     
     logger.info("Аналіз даних успішно завершено.")
 
 if __name__ == '__main__':
     main()
-
     

@@ -1,6 +1,7 @@
 import pandas as pd
 import argparse
 import os
+import gc  # Додаємо для виклику збирача сміття
 import calendar
 from datetime import datetime
 from sqlalchemy import create_engine, text
@@ -14,6 +15,55 @@ from logger import get_logger
 
 # Get logger for main_monthly module
 logger = get_logger("main_monthly")
+
+
+def process_search_terms_chunk(engine, start_date, end_date, search_terms_chunk, month_number, year, update_chunk):
+    """
+    Обробляє один чанк пошукових термінів для місячних даних
+    
+    :param engine: з'єднання з базою даних
+    :param start_date: початкова дата аналізу
+    :param end_date: кінцева дата аналізу
+    :param search_terms_chunk: список пошукових термінів для обробки
+    :param month_number: номер місяця
+    :param year: рік
+    :param update_chunk: розмір чанка для оновлення бази даних
+    """
+    try:
+        # Аналіз пошукових термінів для місячних даних
+        logger.info(f"Початок аналізу для чанка з {len(search_terms_chunk)} пошукових термінів...")
+        results = analyze_monthly_search_terms(
+            engine=engine,
+            start_date=start_date,
+            end_date=end_date,
+            month_number=month_number,
+            year=year,
+            search_list=search_terms_chunk
+        )
+        
+        if not results:
+            logger.warning("Не отримано результатів аналізу для чанка.")
+            return
+        
+        logger.info(f"Отримано результати для {len(results)} пошукових термінів у чанку.")
+        
+        # Оновлюємо тільки поля кліків та замовлень в таблиці
+        logger.info(f"Оновлення бази даних результатами чанка...")
+        update_monthly_table_with_results(
+            engine=engine,
+            result_dfs=results,
+            month_number=month_number,
+            year=year,
+            chunk_size=update_chunk
+        )
+        
+        # Звільняємо пам'ять від результатів
+        del results
+        gc.collect()
+        
+        logger.info(f"Обробка чанка успішно завершена.")
+    except Exception as e:
+        logger.error(f"Помилка при обробці чанка пошукових термінів: {str(e)}")
 
 
 def main():
@@ -36,6 +86,8 @@ def main():
                       help='Розмір чанка для запитів до бази даних')
     parser.add_argument('--update_chunk', type=int, default=app_config['update_chunk'],
                       help='Розмір чанка для оновлення бази даних')
+    parser.add_argument('--max_terms', type=int, default=10000,
+                      help='Максимальна кількість пошукових термінів для обробки за один раз')
     parser.add_argument('--db_host', type=str, default=db_config['host'],
                       help='Хост бази даних')
     parser.add_argument('--db_port', type=int, default=db_config['port'],
@@ -147,30 +199,43 @@ def main():
             
         logger.info("Знайдено щоденні дані. Починаємо обробку місячних даних.")
         
-        # Аналіз пошукових термінів для місячних даних
-        results = analyze_monthly_search_terms(
-            engine=engine,
-            start_date=start_date,
-            end_date=end_date,
-            month_number=args.month,
-            year=args.year,
-            search_list=search_terms
-        )
-        
-        if not results:
-            logger.warning("Не отримано результатів аналізу.")
-            return
-        
-        logger.info(f"Отримано результати для {len(results)} пошукових термінів.")
-        
-        # Оновлюємо тільки поля кліків та замовлень в таблиці
-        update_monthly_table_with_results(
-            engine=engine,
-            result_dfs=results,
-            month_number=args.month,
-            year=args.year,
-            chunk_size=args.update_chunk
-        )
+        # Перевіряємо розмір списку термінів і обробляємо його по частинах, якщо потрібно
+        if len(search_terms) > args.max_terms:
+            logger.info(f"Список пошукових термінів перевищує максимальний розмір ({len(search_terms)} > {args.max_terms})")
+            logger.info(f"Розбиваємо на частини по {args.max_terms//2} термінів")
+            
+            # Розбиваємо на частини
+            chunk_size = args.max_terms // 2  # Розмір чанка вдвічі менший за максимальний розмір
+            term_chunks = [search_terms[i:i+chunk_size] for i in range(0, len(search_terms), chunk_size)]
+            
+            # Обробляємо кожну частину окремо
+            for i, chunk in enumerate(term_chunks):
+                logger.info(f"Обробка чанка {i+1}/{len(term_chunks)} з {len(chunk)} термінів")
+                process_search_terms_chunk(
+                    engine=engine,
+                    start_date=start_date,
+                    end_date=end_date,
+                    search_terms_chunk=chunk,
+                    month_number=args.month,
+                    year=args.year,
+                    update_chunk=args.update_chunk
+                )
+                
+                # Звільняємо пам'ять після обробки чанка
+                gc.collect()
+                logger.info(f"Обробка чанка {i+1}/{len(term_chunks)} завершена")
+        else:
+            # Обробляємо весь список термінів як один чанк
+            logger.info(f"Обробка всіх {len(search_terms)} термінів разом")
+            process_search_terms_chunk(
+                engine=engine,
+                start_date=start_date,
+                end_date=end_date,
+                search_terms_chunk=search_terms,
+                month_number=args.month,
+                year=args.year,
+                update_chunk=args.update_chunk
+            )
         
         logger.info("Аналіз місячних даних успішно завершено.")
     except Exception as e:
