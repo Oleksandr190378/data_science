@@ -15,10 +15,8 @@ env_paths = [
 for env_path in env_paths:
     if env_path.exists():
         load_dotenv(env_path)
-        print(f"Завантажено .env з {env_path}")
         break
-else:
-    print("Файл .env не знайдено, використовуємо змінні середовища або значення за замовчуванням")
+
 
 
 # Визначення середовища

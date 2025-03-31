@@ -73,7 +73,7 @@ def calculate_seasonal_factor(date_obj):
     if year in prime_day_dates:
         exact_prime_days = prime_day_dates[year]
         if (month, day) in exact_prime_days:
-            return 3.0  # Пік Prime Day
+            return 3.3  # Пік Prime Day
         
         # Дні до Prime Day (підготовка)
         for pd_month, pd_day in exact_prime_days:
@@ -89,7 +89,7 @@ def calculate_seasonal_factor(date_obj):
     if year in deal_days_dates:
         exact_deal_days = deal_days_dates[year]
         if (month, day) in exact_deal_days:
-            return 2.5  # Пік Deal Days
+            return 3.0  # Пік Deal Days
         
         # Дні до Deal Days (підготовка)
         for dd_month, dd_day in exact_deal_days:
@@ -106,45 +106,45 @@ def calculate_seasonal_factor(date_obj):
     
     # Сам Black Friday
     if date_obj == bf_date:
-        return 3.0  # Пік Black Friday
+        return 5.0  # Пік Black Friday
     
     # Тиждень до Black Friday
     week_before_bf = bf_date - timedelta(days=7)
     if week_before_bf <= date_obj < bf_date:
-        return 1.8  # Підготовка до Black Friday
+        return 2.2  # Підготовка до Black Friday
     
     # Вихідні після Black Friday
     weekend_after_bf = bf_date + timedelta(days=2)
     if bf_date < date_obj <= weekend_after_bf:
-        return 2  # Вихідні після Black Friday
+        return 2.6  # Вихідні після Black Friday
     
     # Перевіряємо Cyber Monday
     cm_date = cyber_monday_date
     
     # Сам Cyber Monday
     if date_obj == cm_date:
-        return 3.0  # Пік Cyber Monday
+        return 5.0  # Пік Cyber Monday
     
     # Дні після Cyber Monday
     days_after_cm = cm_date + timedelta(days=3)
     if cm_date < date_obj <= days_after_cm:
-        return 1.4  # Дні після Cyber Monday
+        return 3.0  # Дні після Cyber Monday
     
     # Різдвяний сезон (грудень)
     if month == 12:
         if 1 <= day <= 15:
-            return 1.45  # Перша половина грудня
+            return 3.0  # Перша половина грудня
         elif 16 <= day <= 20:
-            return 2  # Пік перед Різдвом
+            return 4.5  # Пік перед Різдвом
         elif 21 <= day <= 24:
-            return 2.1  # Останні дні перед Різдвом
+            return 3.5  # Останні дні перед Різдвом
     
     # Back to School (серпень)
     if month == 8:
         if 1 <= day <= 15:
             return 1.25  # Початок Back to School
         elif 16 <= day <= 31:
-            return 1.3  # Пік Back to School
+            return 1.4  # Пік Back to School
     
     # Valentine's Day
     if month == 2:

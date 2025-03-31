@@ -288,7 +288,7 @@ def load_previous_data(
             previous_start_date = f"{current_start_date_obj.year}-10-25"
             previous_end_date = f"{current_start_date_obj.year}-11-01"   
         
-        print(f"Завантаження попередніх даних за період: {previous_start_date} - {previous_end_date}")
+        #print(f"Завантаження попередніх даних за період: {previous_start_date} - {previous_end_date}")
         
         # Якщо список пошукових термінів порожній, повертаємо порожній DataFrame
         if not search_terms or len(search_terms) == 0:
