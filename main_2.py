@@ -258,7 +258,7 @@ def main():
                         help='Розмір чанка для запитів до бази даних')
     parser.add_argument('--update_chunk', type=int, default=app_config['update_chunk'],
                         help='Розмір чанка для оновлення бази даних')
-    parser.add_argument('--max_terms', type=int, default=100000,
+    parser.add_argument('--max_terms', type=int, default=2000,
                         help='Максимальна кількість пошукових термінів для обробки за один раз')
     parser.add_argument('--parallel', action='store_true',
                         help='Використовувати паралельну обробку даних')
