@@ -18,7 +18,7 @@ from seasonal_factor import calculate_seasonal_factor
 
 
 # Отримуємо логер для main модуля
-logger = get_logger("main")
+logger = get_logger("main_daily")
 
 pd.set_option('future.no_silent_downcasting', True)
 

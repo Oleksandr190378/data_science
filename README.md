@@ -144,7 +144,7 @@ source venv/bin/activate
 2. **Запуск аналізу**:
 ```bash
 # Для щоденного аналізу (поточний тиждень)
-python main.py --period week --value 5 --year 2025
+python main_daily.py --period week --value 5 --year 2025
 
 # Для тижневого аналізу (конкретний тиждень)
 python main_weekly.py --week 5 --year 2025
@@ -167,7 +167,7 @@ deactivate
 mkdir -p logs
 
 # Запуск процесу у фоновому режимі
-nohup python main.py --period week --value $(date +%V) --year $(date +%Y) > logs/nohup.log 2>&1 &
+nohup python main_daily.py --period week --value $(date +%V) --year $(date +%Y) > logs/nohup.log 2>&1 &
 ```
 
 Перевірка статусу процесу:
@@ -196,7 +196,7 @@ crontab -e
 
 ### Аналіз щоденних даних:
 ```bash
-python main.py --period week --value 5 --year 2025
+python main_daily.py --period week --value 5 --year 2025
 ```
 
 ### Аналіз тижневих даних:
@@ -212,7 +212,7 @@ python main_monthly.py --month 2 --year 2025
 ### Аналіз підмножини пошукових термінів:
 ```bash
 # Для щоденних даних
-python main.py --period week --value 5 --year 2025 --search_range 100:120
+python main_daily.py --period week --value 5 --year 2025 --search_range 100:120
 
 # Для тижневих даних
 python main_weekly.py --week 5 --year 2025 --search_range 100:120
@@ -230,9 +230,14 @@ python main_weekly.py --week 5 --year 2025 --list_ids "2108,2316,2596"
 python main_monthly.py --month 2 --year 2025 --list_ids "2108,2316,2596"
 ```
 
+### Запуск паралельно 3 ядер процесора :
+```bash
+# Для щоденних даних
+python main_daily.py --period week --value 5 --year 2025 --parallel --workers 3
+
 ## Параметри командного рядка
 
-### Для main.py:
+### Для main_daily.py:
 - `--period`: Період для аналізу (day, week, month, quarter, year)
 - `--value`: Значення періоду (наприклад, номер тижня, місяця)
 - `--year`: Рік для аналізу
@@ -246,6 +251,8 @@ python main_monthly.py --month 2 --year 2025 --list_ids "2108,2316,2596"
 - `--db_user`: Користувач бази даних
 - `--db_password`: Пароль бази даних
 - `--env`: Середовище для запуску (development, production)
+- `--parallel : для паралельного запуску ядер процесора 
+- `--workers : кількість ядер 
 
 ### Для main_weekly.py:
 - `--week`: Номер тижня для аналізу (1-53)
@@ -270,7 +277,7 @@ python main_monthly.py --month 2 --year 2025 --list_ids "2108,2316,2596"
 ## Структура проекту
 
 ### Головні модулі:
-- `main.py`: Головний скрипт для запуску щоденного аналізу
+- `main_daily.py`: Головний скрипт для запуску щоденного аналізу
 - `main_weekly.py`: Скрипт для аналізу тижневих даних
 - `main_monthly.py`: Скрипт для аналізу місячних даних
 - `get_id_terms.py`: Отримання унікальних пошукових термінів
@@ -304,7 +311,7 @@ python main_monthly.py --month 2 --year 2025 --list_ids "2108,2316,2596"
 ## Робочий процес аналізу даних
 
 1. **Щоденні дані**:
-   - Використовуйте `main.py` для аналізу щоденних даних
+   - Використовуйте `main_daily.py` для аналізу щоденних даних
 
 2. **Тижневі дані**:
    - Спочатку впевніться, що щоденні дані за відповідний тиждень вже оброблені
