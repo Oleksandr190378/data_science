@@ -137,5 +137,5 @@ if __name__ == '__main__':
     # Отримуємо список пошукових термінів за весь період
     search_terms = get_unique_search_terms_for_period(engine, start_date, end_date)
     print(f"Знайдено {len(search_terms)} унікальних пошукових термінів") 
-    print(search_terms[9580:9600])
+    print(search_terms[7100:7120])
 

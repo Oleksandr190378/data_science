@@ -135,9 +135,7 @@ def get_daily_data(
             total_clicks_sum += avg_clicks * missing_days
             total_orders_sum += avg_orders * missing_days
         
-        # Усереднений SFR за тиждень
-        #avg_sfr = term_data["SFR"].mean()
-        
+ 
         # Створюємо рядок з результатами для цього терміну
         result_row = {
             "Search_Term": term,
@@ -189,8 +187,7 @@ def check_daily_data_availability(
     WHERE date BETWEEN :start_date AND :end_date
     AND id_amz_marketplace = 2
     AND id_amz_search_term IN :search_terms
-    AND total_clicks IS NOT NULL
-    AND total_orders IS NOT NULL
+    AND (total_clicks IS  NULL OR total_orders IS  NULL)
     """)
     
     # Виконуємо запит
@@ -210,7 +207,7 @@ def check_daily_data_availability(
         data_count = result.fetchone()[0]
     
     # Якщо є хоча б один запис з даними, повертаємо True
-    return data_count > 0
+    return data_count == 0
 
 
 def get_weekly_seasonal_factor(start_date, end_date):

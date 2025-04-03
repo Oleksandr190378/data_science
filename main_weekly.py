@@ -2,6 +2,8 @@ import pandas as pd
 import argparse
 import os
 import gc  # Додаємо для виклику збирача сміття
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from sqlalchemy import create_engine, text
 from get_id_terms import get_unique_search_terms_for_period, get_date_range
 from week.get_weekly_data import get_daily_data, check_daily_data_availability
@@ -13,6 +15,129 @@ from logger import get_logger  # Import the logger module used in main.py
 
 # Get logger for main_weekly module
 logger = get_logger("main_weekly")
+
+
+def worker_process(db_params, start_date, end_date, search_terms_chunk, week_number, year, update_chunk, worker_id):
+    """
+    Функція, що виконується в окремому процесі для обробки частини пошукових термінів
+    
+    :param db_params: параметри підключення до бази даних
+    :param start_date: початкова дата аналізу
+    :param end_date: кінцева дата аналізу
+    :param search_terms_chunk: список пошукових термінів для обробки
+    :param week_number: номер тижня для аналізу
+    :param year: рік для аналізу
+    :param update_chunk: розмір чанка для оновлення бази даних
+    :param worker_id: ідентифікатор робочого процесу
+    :return: статус завершення (True/False)
+    """
+    # Налаштовуємо логер для воркера
+    import logging
+    worker_logger = logging.getLogger(f"worker_weekly_{worker_id}")
+    worker_logger.setLevel(logging.INFO)
+    
+    if not worker_logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setLevel(logging.INFO)
+        worker_logger.addHandler(handler)
+    
+    try:
+        # Створюємо нове з'єднання з базою даних для кожного процесу
+        engine = create_engine(f"postgresql://{db_params['user']}:{db_params['password']}@{db_params['host']}:{db_params['port']}/{db_params['database']}")
+        
+        worker_logger.info(f"Воркер {worker_id}: Початок обробки {len(search_terms_chunk)} термінів")
+        
+        # Аналіз пошукових термінів для тижневих даних
+        results = analyze_weekly_search_terms(
+            engine=engine,
+            start_date=start_date,
+            end_date=end_date,
+            week_number=week_number,
+            year=year,
+            search_list=search_terms_chunk
+        )
+        
+        if not results:
+            worker_logger.warning(f"Воркер {worker_id}: Не отримано результатів аналізу")
+            return False
+        
+        worker_logger.info(f"Воркер {worker_id}: Отримано {len(results)} результатів")
+        
+        # Оновлюємо базу даних результатами
+        update_weekly_table_with_results(
+            engine=engine,
+            result_dfs=results,
+            week_number=week_number,
+            year=year,
+            chunk_size=update_chunk
+        )
+        
+        # Звільняємо пам'ять
+        del results
+        gc.collect()
+        
+        worker_logger.info(f"Воркер {worker_id}: Обробку завершено успішно")
+        return True
+    except Exception as e:
+        worker_logger.error(f"Воркер {worker_id}: Помилка при обробці даних: {str(e)}")
+        return False
+
+
+def process_chunk_parallel(db_params, start_date, end_date, terms_chunk, week_number, year, update_chunk, num_workers):
+    """
+    Обробляє один чанк термінів паралельно, використовуючи кілька процесів
+    
+    :param db_params: параметри підключення до бази даних
+    :param start_date: початкова дата аналізу
+    :param end_date: кінцева дата аналізу
+    :param terms_chunk: чанк пошукових термінів
+    :param week_number: номер тижня для аналізу
+    :param year: рік для аналізу
+    :param update_chunk: розмір чанка для оновлення бази даних
+    :param num_workers: кількість паралельних процесів
+    :return: успішність операції (True/False)
+    """
+    logger.info(f"Паралельна обробка чанка з {len(terms_chunk)} термінів, {num_workers} робочих процесів")
+    
+    # Розбиваємо чанк термінів на підчанки для паралельної обробки
+    worker_chunk_size = max(1, len(terms_chunk) // num_workers)
+    worker_chunks = [terms_chunk[i:i+worker_chunk_size] for i in range(0, len(terms_chunk), worker_chunk_size)]
+    
+    logger.info(f"Розділено на {len(worker_chunks)} підчанки")
+    
+    success_count = 0
+    
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        # Створюємо завдання для кожного підчанка
+        futures = {
+            executor.submit(
+                worker_process, 
+                db_params, 
+                start_date, 
+                end_date, 
+                worker_chunk,
+                week_number,
+                year,
+                update_chunk,
+                i  # Ідентифікатор воркера
+            ): i for i, worker_chunk in enumerate(worker_chunks)
+        }
+        
+        # Обробляємо результати в міру їх завершення
+        for future in as_completed(futures):
+            worker_idx = futures[future]
+            try:
+                result = future.result()
+                if result:
+                    success_count += 1
+                    logger.info(f"Підчанк {worker_idx+1}/{len(worker_chunks)} оброблено успішно")
+                else:
+                    logger.warning(f"Підчанк {worker_idx+1}/{len(worker_chunks)} завершено з помилками")
+            except Exception as e:
+                logger.error(f"Помилка при обробці підчанка {worker_idx+1}/{len(worker_chunks)}: {str(e)}")
+    
+    logger.info(f"Паралельну обробку завершено: {success_count}/{len(worker_chunks)} підчанків успішно")
+    return success_count > 0
 
 
 def process_search_terms_chunk(engine, start_date, end_date, search_terms_chunk, week_number, year, update_chunk):
@@ -84,8 +209,13 @@ def main():
                       help='Розмір чанка для запитів до бази даних')
     parser.add_argument('--update_chunk', type=int, default=app_config['update_chunk'],
                       help='Розмір чанка для оновлення бази даних')
-    parser.add_argument('--max_terms', type=int, default=2000,
+    parser.add_argument('--max_terms', type=int, default=20000,
                       help='Максимальна кількість пошукових термінів для обробки за один раз')
+    # Додаємо нові параметри для паралельної обробки
+    parser.add_argument('--parallel', action='store_true',
+                      help='Використовувати паралельну обробку даних')
+    parser.add_argument('--workers', type=int, default=None,
+                      help='Кількість процесів для паралельної обробки (за замовчуванням - кількість ядер CPU)')
     parser.add_argument('--db_host', type=str, default=db_config['host'],
                       help='Хост бази даних')
     parser.add_argument('--db_port', type=int, default=db_config['port'],
@@ -117,6 +247,11 @@ def main():
     
     logger.info(f"Запуск у середовищі: {os.environ.get('APP_ENV', 'development')}")
     logger.info(f"Підключення до бази даних: {db_params['host']}:{db_params['port']}/{db_params['database']}")
+    
+    # Визначаємо кількість процесів для паралельної обробки
+    if args.parallel:
+        num_workers = args.workers or max(1, multiprocessing.cpu_count() - 1)
+        logger.info(f"Увімкнено паралельну обробку з {num_workers} процесами")
     
     # Створення з'єднання з базою даних
     try:
@@ -192,37 +327,73 @@ def main():
             logger.info(f"Розбиваємо на частини по {args.max_terms//2} термінів")
             
             # Розбиваємо на частини
-            chunk_size = args.max_terms // 2  # Розмір чанка вдвічі менший за максимальний розмір
-            term_chunks = [search_terms[i:i+chunk_size] for i in range(0, len(search_terms), chunk_size)]
+            memory_chunk_size = args.max_terms // 2  # Розмір чанка вдвічі менший за максимальний розмір
+            memory_chunks = [search_terms[i:i+memory_chunk_size] for i in range(0, len(search_terms), memory_chunk_size)]
             
             # Обробляємо кожну частину окремо
-            for i, chunk in enumerate(term_chunks):
-                logger.info(f"Обробка чанка {i+1}/{len(term_chunks)} з {len(chunk)} термінів")
+            for i, memory_chunk in enumerate(memory_chunks):
+                logger.info(f"Обробка чанка {i+1}/{len(memory_chunks)} з {len(memory_chunk)} термінів")
+                
+                if args.parallel:
+                    # Паралельна обробка чанка
+                    logger.info(f"Використовуємо паралельну обробку з {num_workers} процесами для чанка {i+1}")
+                    success = process_chunk_parallel(
+                        db_params=db_params,
+                        start_date=start_date,
+                        end_date=end_date,
+                        terms_chunk=memory_chunk,
+                        week_number=args.week,
+                        year=args.year,
+                        update_chunk=args.update_chunk,
+                        num_workers=num_workers
+                    )
+                    if not success:
+                        logger.error(f"Помилка при паралельній обробці чанка {i+1}/{len(memory_chunks)}")
+                else:
+                    # Послідовна обробка чанка
+                    process_search_terms_chunk(
+                        engine=engine,
+                        start_date=start_date,
+                        end_date=end_date,
+                        search_terms_chunk=memory_chunk,
+                        week_number=args.week,
+                        year=args.year,
+                        update_chunk=args.update_chunk
+                    )
+                
+                # Звільняємо пам'ять після обробки чанка
+                gc.collect()
+                logger.info(f"Обробка чанка {i+1}/{len(memory_chunks)} завершена")
+        else:
+            # Обробляємо весь список термінів як один чанк
+            logger.info(f"Обробка всіх {len(search_terms)} термінів разом")
+            
+            if args.parallel:
+                # Паралельна обробка всіх термінів
+                logger.info(f"Використовуємо паралельну обробку з {num_workers} процесами для всіх {len(search_terms)} термінів")
+                success = process_chunk_parallel(
+                    db_params=db_params,
+                    start_date=start_date,
+                    end_date=end_date,
+                    terms_chunk=search_terms,
+                    week_number=args.week,
+                    year=args.year,
+                    update_chunk=args.update_chunk,
+                    num_workers=num_workers
+                )
+                if not success:
+                    logger.error("Помилка при паралельній обробці термінів")
+            else:
+                # Послідовна обробка всіх термінів
                 process_search_terms_chunk(
                     engine=engine,
                     start_date=start_date,
                     end_date=end_date,
-                    search_terms_chunk=chunk,
+                    search_terms_chunk=search_terms,
                     week_number=args.week,
                     year=args.year,
                     update_chunk=args.update_chunk
                 )
-                
-                # Звільняємо пам'ять після обробки чанка
-                gc.collect()
-                logger.info(f"Обробка чанка {i+1}/{len(term_chunks)} завершена")
-        else:
-            # Обробляємо весь список термінів як один чанк
-            logger.info(f"Обробка всіх {len(search_terms)} термінів разом")
-            process_search_terms_chunk(
-                engine=engine,
-                start_date=start_date,
-                end_date=end_date,
-                search_terms_chunk=search_terms,
-                week_number=args.week,
-                year=args.year,
-                update_chunk=args.update_chunk
-            )
         
         logger.info("Аналіз тижневих даних успішно завершено.")
     except Exception as e:
@@ -231,4 +402,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+    
 
