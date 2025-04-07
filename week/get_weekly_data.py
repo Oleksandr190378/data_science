@@ -60,6 +60,8 @@ def get_daily_data(
     WHERE date BETWEEN :start_date AND :end_date
     AND id_amz_marketplace = 2
     AND id_amz_search_term IN :search_terms
+    AND total_clicks IS NOT  NULL
+    AND total_orders IS NOT  NULL 
     ORDER BY id_amz_search_term
     """
     
@@ -187,7 +189,8 @@ def check_daily_data_availability(
     WHERE date BETWEEN :start_date AND :end_date
     AND id_amz_marketplace = 2
     AND id_amz_search_term IN :search_terms
-    AND (total_clicks IS  NULL OR total_orders IS  NULL)
+    AND total_clicks IS NOT NULL
+    AND total_orders IS NOT NULL
     """)
     
     # Виконуємо запит
@@ -207,7 +210,7 @@ def check_daily_data_availability(
         data_count = result.fetchone()[0]
     
     # Якщо є хоча б один запис з даними, повертаємо True
-    return data_count == 0
+    return data_count > 0
 
 
 def get_weekly_seasonal_factor(start_date, end_date):

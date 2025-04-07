@@ -60,6 +60,8 @@ def get_daily_data(
     WHERE date BETWEEN :start_date AND :end_date
     AND id_amz_marketplace = 2
     AND id_amz_search_term IN :search_terms
+    AND total_clicks IS NOT  NULL
+    AND total_orders IS NOT  NULL 
     ORDER BY id_amz_search_term
     """
     
