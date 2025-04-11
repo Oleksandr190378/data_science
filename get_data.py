@@ -27,13 +27,10 @@ def get_data_from_db(
     SELECT 
         id_amz_search_term,
         amz_search_frequency_rank,
-        amz_top_1_item_name,
         amz_top_1_click_share,
         amz_top_1_conversion_share,
-        amz_top_2_item_name,
         amz_top_2_click_share,
         amz_top_2_conversion_share,
-        amz_top_3_item_name,
         amz_top_3_click_share,
         amz_top_3_conversion_share,
         date
